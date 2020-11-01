@@ -1,5 +1,7 @@
-import requests, os
+import requests, os, re, zipfile, csv, io, math
+import numpy as np
 from bs4 import BeautifulSoup
+import timeit # for testing
 
 class DataDownloader:
     csv_headers = [
@@ -18,9 +20,11 @@ class DataDownloader:
         "ZLK": "15.csv", "VYS": "16.csv"
     }
 
+    years = ['2016', '2017', '2018', '2019', '2020']
+
     def __init__(self, url="https://ehw.fit.vutbr.cz/izv/",folder="data", cache_filename="data_{}.pkl.gz"):
         self.url = url
-        self.folder = folder # TODO: check if "/" is at the end - remove if it is
+        self.folder = folder  # TODO: check if "/" is at the end - remove if it is
         self.cache_filename = cache_filename
 
     def download_data(self):
@@ -51,11 +55,9 @@ class DataDownloader:
                 save_path = self.folder + "/" + os.path.basename(link["href"])
                 
                 with requests.get(download_path, stream=True) as r:
-                    print("Downloading: {}".format(link["href"]))
                     with open(save_path, 'wb') as fd:
                         for chunk in r.iter_content(chunk_size=128):
                             fd.write(chunk)
-            print("Download done.")
 
         else:
             # TODO - raise error 
@@ -68,6 +70,84 @@ class DataDownloader:
             # TODO - raise error
             print("ERROR")
 
+        # Get list of files in folder
+        all_files = [
+            f 
+            for f in os.listdir(self.folder) 
+            if os.path.isfile(os.path.join(self.folder, f))
+        ]
+
+        # prepare the tuple
+        np_list = (len(self.csv_headers) + 1) * [np.array([])]
+        column_list = (len(self.csv_headers) + 1) * [None]
+        for i in range(len(column_list)):
+            column_list[i] = []
+
+        for year in self.years:
+            # get all files with 'year' in name
+            files = [s for s in all_files if year in s]
+
+            # find if exists file with statistics for whole year
+            year_file = next((s for s in files if "rok" in s), None)
+            if year_file == None:
+                # 2016 has format "datagis2016.zip" - check for that
+                result = list(filter(lambda v: re.match(r"data[-]?gis[-]?{0}.zip".format(year), v), files))
+                if len(result) != 0:
+                    year_file = result[0]
+
+            if year_file == None: # File with whole year stats is not present, need to find latest month file
+                for month in range(12, 0, -1):
+                    month_str = str(month) if month > 9 else "0" + str(month)
+                    result = list(filter(lambda v: re.match(r"data[-]?gis[-]?{0}[-]?{1}.zip".format(month_str, year), v), files))
+                    if len(result) != 0:
+                        year_file = result[0]
+                        break
+
+            if year_file == None:
+                # raise error? 
+                print("ERROR")
+
+            # read one csv file from zip archive
+            print(self.folder + "/" + year_file, self.region_filename[region])
+            with zipfile.ZipFile(self.folder + "/" + year_file) as zf:
+                with zf.open(self.region_filename[region], 'r') as infile:
+            #for tmp in range(1): # TODO - REMOVE!
+            #    with open("test.csv", 'r') as infile:
+                    reader = csv.reader(io.TextIOWrapper(infile, 'windows-1250'), delimiter=";")
+                    #reader = csv.reader(infile, delimiter=";")
+                    num_lines = 0
+                    
+                    #print(reader)
+                    for lines in reader:
+                        num_lines += 1
+                        for i in range(len(self.csv_headers)):
+                            # try to convert to int
+                            #if re.match(r"^[-+]?\d+$", lines[i]):  # is integer
+                            try:
+                                if re.match(r"^[-+]?([1-9]\d*|0)$", lines[i]):  # is integer
+                                    column_list[i].append(int(lines[i]))
+                                #elif re.match(r"^[-+]?\d*\.\d+|\d+$", lines[i]):  # is float
+                                elif re.match(r"^[-+]?\d*\.\d+|\d+$", lines[i]):  # is float
+                                    column_list[i].append(float(lines[i]))
+                                #elif re.match(r"^[-+]?\d*,\d+|\d+$", lines[i]):  # is float but needs to replace ","
+                                elif re.match(r"^[-+]?\d*,\d+|\d+$", lines[i]):  # is float but needs to replace ","
+                                    corrected_float = lines[i].replace(',', '.')
+                                    column_list[i].append(float(corrected_float))
+                                else: # is just normal string
+                                    column_list[i].append(lines[i])
+                            except ValueError: # TODO - poriesit lepsie '3.5kmsměrdálniceD1' -> chce davat na float
+                                column_list[i].append(lines[i])
+
+                    column_list[-1] = column_list[-1] + (num_lines * [region])
+            #break # TODO - testing only for one year
+
+        # TODO - clean the values! - "" kedy ma byt str a kedy NaN, ...
+
+        for i in range(len(np_list)):
+            np_list[i] = np.asarray(column_list[i])
+        #print(np_list)
+        return (self.csv_headers + ["region"], np_list)
+            
 
     def get_list(self, regions = None):
         pass
@@ -75,4 +155,7 @@ class DataDownloader:
 
 # Main
 dataDownloader = DataDownloader()
-dataDownloader.download_data()
+#dataDownloader.download_data()
+ret = dataDownloader.parse_region_data("PHA")
+print(ret)
+print("END")
