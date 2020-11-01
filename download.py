@@ -1,7 +1,7 @@
-import requests, os, re, zipfile, csv, io, math
+import requests, os, re, zipfile, csv, io, pickle
 import numpy as np
 from bs4 import BeautifulSoup
-import timeit # for testing
+
 
 class DataDownloader:
     csv_headers = [
@@ -18,6 +18,13 @@ class DataDownloader:
         "KVK": "19.csv", "ULK": "04.csv", "LBK": "18.csv", "HKK": "05.csv",
         "PAK": "17.csv", "OLK": "14.csv", "MSK": "07.csv", "JHM": "06.csv",
         "ZLK": "15.csv", "VYS": "16.csv"
+    }
+
+    region_cache = {
+        "PHA": None, "STC": None, "JHC": None, "PLK": None,
+        "KVK": None, "ULK": None, "LBK": None, "HKK": None,
+        "PAK": None, "OLK": None, "MSK": None, "JHM": None,
+        "ZLK": None, "VYS": None
     }
 
     years = ['2016', '2017', '2018', '2019', '2020']
@@ -42,7 +49,7 @@ class DataDownloader:
             soup=BeautifulSoup(resp.text, 'html.parser')
             table = soup.find('table',class_='table table-fluid')
             
-            if table == None:
+            if table is None:
                 # TODO - raise error
                 print("ERROR")
 
@@ -50,7 +57,7 @@ class DataDownloader:
             if not os.path.exists(self.folder):
                 os.makedirs(self.folder)
 
-            for link in table.find_all('a',class_='btn btn-sm btn-primary'):
+            for link in table.find_all('a', class_='btn btn-sm btn-primary'):
                 download_path = self.url + link["href"]
                 save_path = self.folder + "/" + os.path.basename(link["href"])
                 
@@ -89,21 +96,21 @@ class DataDownloader:
 
             # find if exists file with statistics for whole year
             year_file = next((s for s in files if "rok" in s), None)
-            if year_file == None:
+            if year_file is None:
                 # 2016 has format "datagis2016.zip" - check for that
-                result = list(filter(lambda v: re.match(r"data[-]?gis[-]?{0}.zip".format(year), v), files))
+                result = list(filter(lambda v: re.match(r"data[-]?gis[-]?{0}".format(year), v), files))
                 if len(result) != 0:
                     year_file = result[0]
 
-            if year_file == None: # File with whole year stats is not present, need to find latest month file
+            if year_file is None: # File with whole year stats is not present, need to find latest month file
                 for month in range(12, 0, -1):
                     month_str = str(month) if month > 9 else "0" + str(month)
-                    result = list(filter(lambda v: re.match(r"data[-]?gis[-]?{0}[-]?{1}.zip".format(month_str, year), v), files))
+                    result = list(filter(lambda v: re.match(r"data[-]?gis[-]?{0}[-]?{1}".format(month_str, year), v), files))
                     if len(result) != 0:
                         year_file = result[0]
                         break
 
-            if year_file == None:
+            if year_file is None:
                 # raise error? 
                 print("ERROR")
 
@@ -111,31 +118,27 @@ class DataDownloader:
             print(self.folder + "/" + year_file, self.region_filename[region])
             with zipfile.ZipFile(self.folder + "/" + year_file) as zf:
                 with zf.open(self.region_filename[region], 'r') as infile:
-            #for tmp in range(1): # TODO - REMOVE!
-            #    with open("test.csv", 'r') as infile:
                     reader = csv.reader(io.TextIOWrapper(infile, 'windows-1250'), delimiter=";")
-                    #reader = csv.reader(infile, delimiter=";")
                     num_lines = 0
                     
-                    #print(reader)
                     for lines in reader:
                         num_lines += 1
                         for i in range(len(self.csv_headers)):
                             # try to convert to int
-                            #if re.match(r"^[-+]?\d+$", lines[i]):  # is integer
                             try:
+                                # if re.match(r"^[-+]?\d+$", lines[i]):  # is integer
                                 if re.match(r"^[-+]?([1-9]\d*|0)$", lines[i]):  # is integer
                                     column_list[i].append(int(lines[i]))
-                                #elif re.match(r"^[-+]?\d*\.\d+|\d+$", lines[i]):  # is float
                                 elif re.match(r"^[-+]?\d*\.\d+|\d+$", lines[i]):  # is float
                                     column_list[i].append(float(lines[i]))
-                                #elif re.match(r"^[-+]?\d*,\d+|\d+$", lines[i]):  # is float but needs to replace ","
                                 elif re.match(r"^[-+]?\d*,\d+|\d+$", lines[i]):  # is float but needs to replace ","
                                     corrected_float = lines[i].replace(',', '.')
                                     column_list[i].append(float(corrected_float))
-                                else: # is just normal string
+                                elif len(lines[i]) == 0:  # empty string
+                                    column_list[i].append(None)
+                                else:  # is just normal string
                                     column_list[i].append(lines[i])
-                            except ValueError: # TODO - poriesit lepsie '3.5kmsměrdálniceD1' -> chce davat na float
+                            except ValueError:  # TODO - poriesit lepsie '3.5kmsměrdálniceD1' -> chce davat na float
                                 column_list[i].append(lines[i])
 
                     column_list[-1] = column_list[-1] + (num_lines * [region])
@@ -150,12 +153,51 @@ class DataDownloader:
             
 
     def get_list(self, regions = None):
-        pass
+        if regions is None:
+            regions = self.region_filename.keys()
+        else:  # Check if all region names are correct
+            for region in regions:
+                if region not in self.region_filename.keys():
+                    # TODO - raise error
+                    print("ERROR")
+                    break
+
+        # prepare the tuple
+        np_list = (len(self.csv_headers) + 1) * [np.array([])]
+        for region in regions:
+            print(region)
+            # check if region data already loaded in class attribute
+            if self.region_cache[region] is not None:
+                data = self.region_cache[region]
+            else:  # check if region data already stored as cache file
+                region_cache_filename = self.cache_filename.replace("{}", region)
+                if os.path.isfile(region_cache_filename):
+                    with open(region_cache_filename, 'rb') as f:
+                        data = pickle.load(f)
+                        self.region_cache[region] = data
+                else:  # region data not yet cached
+                    data = self.parse_region_data(region)
+                    self.region_cache[region] = data  # cache data in attribute
+                    with open(region_cache_filename, 'wb') as f:  # Create cache file
+                         pickle.dump(data, f)
+
+            # Append acquired data to np array
+            for i in range(len(np_list)):
+                if np_list[i].size == 0:
+                    np_list[i] = data[1][i]
+                else:
+                    np.concatenate((np_list[i], data[1][i]))
+            #print(region, "done.")
+
+        return (self.csv_headers + ["region"], np_list)
+        
+
 
 
 # Main
 dataDownloader = DataDownloader()
 #dataDownloader.download_data()
-ret = dataDownloader.parse_region_data("PHA")
-print(ret)
+#ret = dataDownloader.parse_region_data("PHA")
+#print(ret)
+dataDownloader.get_list()
 print("END")
