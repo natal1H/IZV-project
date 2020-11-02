@@ -1,5 +1,11 @@
-import requests, os, re, zipfile, csv, io, pickle
+import csv
+import io
 import numpy as np
+import os
+import pickle
+import re
+import requests
+import zipfile
 from bs4 import BeautifulSoup
 
 
@@ -41,7 +47,7 @@ class DataDownloader:
 
     years = ['2016', '2017', '2018', '2019', '2020']
 
-    def __init__(self, url="https://ehw.fit.vutbr.cz/izv/",folder="data", cache_filename="data_{}.pkl.gz"):
+    def __init__(self, url="https://ehw.fit.vutbr.cz/izv/", folder="data", cache_filename="data_{}.pkl.gz"):
         self.url = url
         self.folder = folder  # TODO: check if "/" is at the end - remove if it is
         self.cache_filename = cache_filename
@@ -159,10 +165,9 @@ class DataDownloader:
 
         for i in range(len(np_list)):
             np_list[i] = np.asarray(column_list[i])
-        return (self.csv_headers + ["region"], np_list)
-            
+        return self.csv_headers + ["region"], np_list
 
-    def get_list(self, regions = None):
+    def get_list(self, regions=None):
         if regions is None:
             regions = self.region_filename.keys()
         else:  # Check if all region names are correct
@@ -197,11 +202,12 @@ class DataDownloader:
                 else:
                     np_list[i] = np.concatenate((np_list[i], data[1][i]))
 
-        return (self.csv_headers + ["region"], np_list)
+        return self.csv_headers + ["region"], np_list
         
 
 if __name__ == "__main__":
     dataDownloader = DataDownloader()
     data = dataDownloader.get_list(["JHM", "PAK", "OLK"])
-    #data = dataDownloader.get_list()
+
     # TODO - vypisat zakladne informacie o datach
+    print("Columns:", data[0])  # print out column names
