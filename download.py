@@ -127,7 +127,6 @@ class DataDownloader:
                 print("ERROR")
 
             # read one csv file from zip archive
-            print(self.folder + "/" + year_file, self.region_filename[region])
             with zipfile.ZipFile(self.folder + "/" + year_file) as zf:
                 with zf.open(self.region_filename[region], 'r') as infile:
                     reader = csv.reader(io.TextIOWrapper(infile, 'windows-1250'), delimiter=";")
@@ -160,7 +159,6 @@ class DataDownloader:
 
         for i in range(len(np_list)):
             np_list[i] = np.asarray(column_list[i])
-        #print(np_list)
         return (self.csv_headers + ["region"], np_list)
             
 
@@ -177,7 +175,6 @@ class DataDownloader:
         # prepare the tuple
         np_list = (len(self.csv_headers) + 1) * [np.array([])]
         for region in regions:
-            print(region)
             # check if region data already loaded in class attribute
             if self.region_cache[region] is not None:
                 data = self.region_cache[region]
@@ -199,7 +196,6 @@ class DataDownloader:
                     np_list[i] = data[1][i]
                 else:
                     np_list[i] = np.concatenate((np_list[i], data[1][i]))
-            #print(region, "done.")
 
         return (self.csv_headers + ["region"], np_list)
         
