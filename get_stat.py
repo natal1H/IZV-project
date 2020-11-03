@@ -6,7 +6,9 @@ from download import DataDownloader
 
 
 def plot_stat(data_source, fig_location=None, show_figure=False):
-    # TODO - check data_source if valid (not None)
+    if data_source is None:
+        # TODO - raise error
+        print("ERROR")
 
     # Create dictionary region name - number of accidents
     accidents = {"2016": None, "2017": None, "2018": None, "2019": None, "2020": None}  # TODO: nech si automaticky zisti ake roky tam su
@@ -79,6 +81,7 @@ def plot_stat(data_source, fig_location=None, show_figure=False):
         plt.show()
 
     plt.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Visualize graph of accidents.')

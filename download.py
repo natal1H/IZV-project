@@ -8,16 +8,12 @@ import requests
 import zipfile
 from bs4 import BeautifulSoup
 
+# TODO - komentáre
+# TODO - dodržanie PEP8
+# TODO - dokumentačné reťazce
+
 
 class DataDownloader:
-    #csv_headers = [
-    #    "p1", "p36", "p37", "p2a", "weekday(p2a)", "p2b", "p6", "p7", "p8", "p9",
-    #    "p10", "p11", "p12", "p13a", "p13b", "p13c", "p14", "p15", "p16", "p17",
-    #    "p18", "p19", "p20", "p21", "p22", "p23", "p24", "p27", "p28", "p34", "p35",
-    #    "p39", "p44", "p45a", "p47", "p48a", "p49", "p50a", "p50b", "p51", "p52", "p53",
-    #    "p55a", "p57", "p58", "a", "b", "d", "e", "f", "g", "h", "i", "j", "k", "l",
-    #    "n", "o", "p", "q", "r", "s", "t", "p5a"
-    #]
     csv_headers = [
         "id", "p36", "p37", "date", "weekday", "time", "type", "type_driving_vehicles",
         "type_fixed_obstacle", "accident_character", "accident_fault", "alcohol_in_culprit", "main_cause",
@@ -53,6 +49,8 @@ class DataDownloader:
         self.cache_filename = cache_filename
 
     def download_data(self):
+        # TODO - spraviť sťahovanie iba posledných súborov, netreba úplne všetky
+
         headers = {
             'Accept-Encoding': 'gzip, deflate, sdch',
             'Accept-Language': 'en-US,en;q=0.8',
@@ -64,12 +62,12 @@ class DataDownloader:
 
         resp = requests.get(self.url, headers = headers)
         if resp.status_code == 200:
-            soup=BeautifulSoup(resp.text, 'html.parser')
-            table = soup.find('table',class_='table table-fluid')
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            table = soup.find('table', class_='table table-fluid')
             
             if table is None:
-                # TODO - raise error
-                print("ERROR")
+                # TODO - find correct exception
+                raise Exception("Could not find table.")
 
             # Create output folder if doesn't exist
             if not os.path.exists(self.folder):
@@ -85,15 +83,15 @@ class DataDownloader:
                             fd.write(chunk)
 
         else:
-            # TODO - raise error 
-            print("ERROR")
+            # TODO - find correct exception
+            raise Exception("Bad response code.")
 
     def parse_region_data(self, region):
         # TODO - if data are not downloaded - download them (check if folder empty??)
         
         if region not in self.region_filename.keys():
-            # TODO - raise error
-            print("ERROR")
+            # TODO - find correct exception
+            raise Exception("Invalid region code.")
 
         # Get list of files in folder
         all_files = [
@@ -159,7 +157,6 @@ class DataDownloader:
                                 column_list[i].append(lines[i])
 
                     column_list[-1] = column_list[-1] + (num_lines * [region])
-            #break # TODO - testing only for one year
 
         # TODO - clean the values! - "" kedy ma byt str a kedy NaN, ...
 
@@ -173,9 +170,9 @@ class DataDownloader:
         else:  # Check if all region names are correct
             for region in regions:
                 if region not in self.region_filename.keys():
-                    # TODO - raise error
-                    print("ERROR")
-                    break
+                    # TODO - find correct exception
+                    # TODO - should be exception or just ignore this region?
+                    raise Exception("Invalid region code.")
 
         # prepare the tuple
         np_list = (len(self.csv_headers) + 1) * [np.array([])]
@@ -193,7 +190,7 @@ class DataDownloader:
                     data = self.parse_region_data(region)
                     self.region_cache[region] = data  # cache data in attribute
                     with open(region_cache_filename, 'wb') as f:  # Create cache file
-                         pickle.dump(data, f)
+                        pickle.dump(data, f)
 
             # Append acquired data to np array
             for i in range(len(np_list)):
@@ -209,5 +206,16 @@ if __name__ == "__main__":
     dataDownloader = DataDownloader()
     data = dataDownloader.get_list(["JHM", "PAK", "OLK"])
 
-    # TODO - vypisat zakladne informacie o datach
-    print("Columns:", data[0])  # print out column names
+    # TODO - vylepšiť vypisované informácie
+    # print out column names
+    print("Columns:", data[0])
+    # print which regions are in dataset
+    regions = []
+    for i in range(data[1][0].size):
+        # Check accident region
+        region = data[1][data[0].index("region")][i]
+        if region not in regions:
+            regions.append(region)
+    print("Regions:", sorted(regions))
+    # print number of entries
+    print("Number of entries:", data[1][0].size)
