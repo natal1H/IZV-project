@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import argparse
 from download import DataDownloader
 
 
@@ -65,10 +67,24 @@ def plot_stat(data_source, fig_location=None, show_figure=False):
             plt.text(xlocs[i] - 0.1, num_accidents[i] + 500, str(v))
 
         plot_index += 1
-    plt.savefig('my_fig.png', dpi=dpi)
+
+    # show or save figure
+    if fig_location is not None:
+        # check if folder where to save it exists
+        folder = os.path.dirname(fig_location)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        plt.savefig(fig_location, dpi=dpi)
+    if show_figure:  # figure location not set -> only show graph
+        plt.show()
+
     plt.close()
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Visualize graph of accidents.')
+    parser.add_argument("--fig_location", type=str, help="figure location for saving")
+    parser.add_argument("--show_figure", help="show figure", default=False, action="store_true")
+    args = parser.parse_args()
 
-data = DataDownloader().get_list()
-#data_source = DataDownloader().get_list(["JHM", "PAK", "OLK"])
-plot_stat(data)
+    data = DataDownloader().get_list()
+    plot_stat(data, fig_location=args.fig_location, show_figure=args.show_figure)
