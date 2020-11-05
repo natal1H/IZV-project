@@ -4,24 +4,38 @@ import os
 import argparse
 from download import DataDownloader
 
+"""IZV project - 1st part
+    Author: Natália Holková
+    Login: xholko02
+"""
 
 def plot_stat(data_source, fig_location=None, show_figure=False):
-    if data_source is None:
-        # TODO - raise error
-        print("ERROR")
+    """Method to create graph of yearly accidents in regions of Czech republic.
 
-    # Create dictionary region name - number of accidents
-    accidents = {"2016": None, "2017": None, "2018": None, "2019": None, "2020": None}  # TODO: nech si automaticky zisti ake roky tam su
+    Keyword arguments:
+        data_source  -- accident data from module download.py
+        fig_location -- location for storing graph
+        show_figure  -- True to show graph
+    """
+    if data_source is None:
+        raise Exception("Error! No data source.")
+
+    # Create dictionary for accidents by year(will have format: region name - number of accidents)
+    accidents = {}
 
     # Iterate over all accident records
     for i in range(data_source[1][0].size):
         # Check accident region
         region = data_source[1][data_source[0].index("region")][i]
         date = data_source[1][data_source[0].index("date")][i]
-        year = date.split("-")[0]
+        try:
+            year = int(date.split("-")[0])
+        except ValueError:
+            # invalid year format - skip this row
+            continue
 
         # Increase accident count
-        if accidents[year] is None:
+        if year not in accidents.keys():
             accidents[year] = {region: 1}
         elif region not in accidents[year].keys():
             accidents[year][region] = 1
@@ -36,37 +50,39 @@ def plot_stat(data_source, fig_location=None, show_figure=False):
     # prepare figure
     dpi = 96  # typical monitor dpi in order to get size in pixels we want
     plt.figure(figsize=(1000/dpi, 1600/dpi), dpi=dpi)
-    plt.suptitle("Počty nehôd v krajoch Českej republiky")
+    plt.suptitle("Počty nehôd v krajoch Českej republiky", weight="bold", size=20)
     num_rows = len(accidents.keys())
     plot_index = 1
 
     for year, stats in accidents.items():
-        plt.subplot(num_rows, 1, plot_index)
+        ax = plt.subplot(num_rows, 1, plot_index)
+        ax.spines['right'].set_visible(False)  # set top border invisible
+        ax.spines['top'].set_visible(False)  # set right border invisible
         regions = list(stats.keys())
         regions.sort()
         num_accidents = [stats[region] for region in regions]
 
         # get region order
-        order = [
-            sorted(num_accidents, reverse=True).index(num) + 1
-            for num in num_accidents
-        ]
+        order = [sorted(num_accidents, reverse=True).index(num) + 1 for num in num_accidents]
 
         # making the graph
-        plt.title(year)  # Subplot title
+        plt.title(str(year), size=14)  # Subplot title
         plt.grid(axis="y", zorder=0)  # Horizontal grid
-        plt.ylabel("Počet nehôd")  # Y label
+        plt.ylabel("$\\it{Počet\ nehôd}$")  # Y label
         plt.ylim(top=max_accidents + 4000)
         plt.yticks(np.arange(0, max_accidents + 4000, 4000))
-        plt.bar(regions, num_accidents, zorder=3)  # zorder has to be 3 so that grid is behind bars
+        barlist = plt.bar(regions, num_accidents, zorder=3, color="blue")  # zorder to get grid behind bars
         xlocs, xlabs = plt.xticks()
         plt.subplots_adjust(hspace=0.8)
 
         for i, v in enumerate(num_accidents):  # show exact number of accidents
-            plt.text(xlocs[i] - 0.3, num_accidents[i] - 2000, num_accidents[i], fontsize=8)
+            plt.text(xlocs[i], num_accidents[i] - 2000, num_accidents[i], fontsize=8, color="white", ha="center")
 
         for i, v in enumerate(order):  # show region order in list of accidents sorted from max to min
-            plt.text(xlocs[i] - 0.1, num_accidents[i] + 500, str(v))
+            plt.text(xlocs[i], num_accidents[i] + 500, str(v), ha='center')
+
+        # set bar with most accidents to a different color
+        barlist[order.index(1)].set_color('darkblue')
 
         plot_index += 1
 
@@ -89,5 +105,6 @@ if __name__ == "__main__":
     parser.add_argument("--show_figure", help="show figure", default=False, action="store_true")
     args = parser.parse_args()
 
-    data = DataDownloader().get_list()
+    #data = DataDownloader().get_list()
+    data = DataDownloader().get_list(["JHM", "PAK", "OLK"])
     plot_stat(data, fig_location=args.fig_location, show_figure=args.show_figure)
