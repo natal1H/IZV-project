@@ -8,6 +8,7 @@ import re
 import requests
 import zipfile
 from bs4 import BeautifulSoup
+from datetime import datetime
 
 """IZV project - 1st part
     Author: Natália Holková
@@ -53,6 +54,10 @@ class DataDownloader:
         # Folder syntax structure check - remove "/" at end
         if self.folder[-1] == "/":
             self.folder = self.folder[:len(self.folder)-1]
+
+        # create folder if it doesn't exist
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
     def download_data(self):
         """Function to download compressed data from url to folder, both specified by object attributes.
@@ -173,30 +178,49 @@ class DataDownloader:
                     reader = csv.reader(io.TextIOWrapper(infile, 'windows-1250'), delimiter=";")
                     num_lines = 0
                     
-                    for lines in reader:
+                    for row in reader:
                         num_lines += 1
                         for i in range(len(self.csv_headers)):
-                            # try to convert to int
-                            try:
-                                # if re.match(r"^[-+]?\d+$", lines[i]):  # is integer
-                                if re.match(r"^[-+]?([1-9]\d*|0)$", lines[i]):  # is integer
-                                    column_list[i].append(int(lines[i]))
-                                elif re.match(r"^[-+]?\d*\.\d+|\d+$", lines[i]):  # is float
-                                    column_list[i].append(float(lines[i]))
-                                elif re.match(r"^[-+]?\d*,\d+|\d+$", lines[i]):  # is float but needs to replace ","
-                                    corrected_float = lines[i].replace(',', '.')
-                                    column_list[i].append(float(corrected_float))
-                                elif len(lines[i]) == 0:  # empty string
+                            if i == self.csv_headers.index("time"):
+                                try:
+                                    time = int(row[i])
+                                    hours = time // 100
+                                    minutes = time % 100
+                                    if hours > 24 or minutes > 59:  # invalid time
+                                        column_list[i].append(None)
+                                    else:  # valid time
+                                        time_obj = datetime.strptime("{}:{}".format(hours, minutes), "%H:%M")
+                                        column_list[i].append(time_obj)
+                                except ValueError:
                                     column_list[i].append(None)
-                                else:  # is just normal string
-                                    column_list[i].append(lines[i])
-                            except ValueError:
-                                column_list[i].append(lines[i])
+                            elif i == self.csv_headers.index("date"):
+                                try:
+                                    date_obj = datetime.strptime(row[i], "%Y-%m-%d")
+                                    column_list[i].append(date_obj)
+                                except ValueError:
+                                    column_list[i].append(None)
+                            else:
+                                # try to convert to int
+                                try:
+                                    # if re.match(r"^[-+]?\d+$", lines[i]):  # is integer
+                                    if re.match(r"^[-+]?([1-9]\d*|0)$", row[i]):  # is integer
+                                        column_list[i].append(int(row[i]))
+                                    elif re.match(r"^[-+]?\d*\.\d+|\d+$", row[i]):  # is float
+                                        column_list[i].append(float(row[i]))
+                                    elif re.match(r"^[-+]?\d*,\d+|\d+$", row[i]):  # is float but needs to replace ","
+                                        corrected_float = row[i].replace(',', '.')
+                                        column_list[i].append(float(corrected_float))
+                                    elif len(row[i]) == 0:  # empty string
+                                        column_list[i].append(None)
+                                    else:  # is just normal string
+                                        column_list[i].append(row[i])
+                                except ValueError:
+                                    column_list[i].append(row[i])
 
                     column_list[-1] = column_list[-1] + (num_lines * [region])
 
         for i in range(len(np_list)):
-            if i == self.csv_headers.index("date"):
+            if i == self.csv_headers.index("date") or i == self.csv_headers.index("time"):
                 date_array = np.array(np.array(column_list[i], dtype='datetime64'))
                 np_list[i] = np.asarray(column_list[i])
             else:
@@ -229,14 +253,14 @@ class DataDownloader:
                 data = self.region_cache[region]
             else:  # check if region data already stored as cache file
                 region_cache_filename = self.cache_filename.replace("{}", region)
-                if os.path.isfile(region_cache_filename): # cache file exists
-                    with open(region_cache_filename, 'rb') as f:
+                if os.path.isfile(self.folder + "/" + region_cache_filename):  # cache file exists
+                    with open(self.folder + "/" + region_cache_filename, 'rb') as f:
                         data = pickle.load(f)
                         self.region_cache[region] = data
                 else:  # region data not yet cached
                     data = self.parse_region_data(region)
                     self.region_cache[region] = data  # cache data in attribute
-                    with open(region_cache_filename, 'wb') as f:  # Create cache file
+                    with open(self.folder + "/" + region_cache_filename, 'wb') as f:  # Create cache file
                         pickle.dump(data, f)
 
             # Append acquired data to np array
@@ -252,6 +276,7 @@ class DataDownloader:
 if __name__ == "__main__":
     dataDownloader = DataDownloader()
     data = dataDownloader.get_list(["JHM", "PAK", "OLK"])
+    #data = dataDownloader.get_list()
 
     # print out column names
     print("Columns:\n\t", end="")
@@ -272,7 +297,9 @@ if __name__ == "__main__":
     for i in range(data[1][0].size):
         # Check accident region
         date = data[1][data[0].index("date")][i]
-        year = int(date.split("-")[0])
+        if date is None:
+            continue
+        year = date.year
         if year not in years:
             years.append(year)
     print("Years:\n\t", end="")

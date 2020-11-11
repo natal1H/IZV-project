@@ -28,8 +28,10 @@ def plot_stat(data_source, fig_location=None, show_figure=False):
         # Check accident region
         region = data_source[1][data_source[0].index("region")][i]
         date = data_source[1][data_source[0].index("date")][i]
+        if date is None:
+            continue
         try:
-            year = int(date.split("-")[0])
+            year = date.year
         except ValueError:
             # invalid year format - skip this row
             continue
@@ -101,7 +103,7 @@ def plot_stat(data_source, fig_location=None, show_figure=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Visualize graph of accidents.')
-    parser.add_argument("--fig_location", type=str, help="figure location for saving")
+    parser.add_argument("--fig_location", type=str, help="figure location for saving (path + file new with extension)")
     parser.add_argument("--show_figure", help="show figure", default=False, action="store_true")
     args = parser.parse_args()
 
