@@ -29,8 +29,22 @@ def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
         # get memory usage before changing columns
         old_size = df.memory_usage(deep=True, index=True).sum() / B_IN_MB
 
+        # change data types of certain columns
+        # fill missing values where needed
+        toInt32Cols = ["p36", "p37", "weekday(p2a)", "p6",]
+        df[toInt32Cols] = df[toInt32Cols].replace(r'^\s*$', "-1", regex=True)
+        df[toInt32Cols] = df[toInt32Cols].astype("int32")
+        df["p2a"] = df["date"] # date column - just copy "date" column
+        stringCols = ["h", "i", "j", "k", "l", "n", "o"]
+        df[stringCols] = df[stringCols].replace(r'^\s*$', np.NaN, regex=True)
+        print(df["p"])
+
+        # get new size
+        new_size = df.memory_usage(deep=True, index=True).sum() / B_IN_MB
+
         if verbose:
             print("old_size={} MB".format(int(old_size)))
+            print("new_size={} MB".format(int(new_size)))
 
         return df
 
