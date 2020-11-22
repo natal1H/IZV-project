@@ -8,9 +8,6 @@ import numpy as np
 import os
 import sys
 import gzip
-import resource  # TODO - je povolene?
-import pickle
-#import pickle5 as pickle
 # muzete pridat libovolnou zakladni knihovnu ci knihovnu predstavenou na prednaskach
 # dalsi knihovny pak na dotaz
 
@@ -19,34 +16,23 @@ import pickle
     Login: xholko02
 """
 
+B_IN_MB = 1048576 # 1 MB = 1 048 576 B
+
 # Ukol 1: nacteni dat
 def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
     if os.path.isfile(filename):  # data file exists
-        print(filename)
-        print(resource.getrlimit(resource.RLIMIT_STACK))
-        print(sys.getrecursionlimit())
+        df = pd.read_pickle(filename, compression="gzip")
 
-        max_rec = 0x100000
+        # create date column in DataFrame
+        df["date"] = pd.to_datetime(df["p2a"], format="%Y-%m-%d", errors="coerce")
 
-        # May segfault without this line. 0x100 is a guess at the size of each stack frame.
-        resource.setrlimit(resource.RLIMIT_STACK, [0x100 * max_rec, resource.RLIM_INFINITY])
-        sys.setrecursionlimit(max_rec)
-        #sys.setrecursionlimit(1000000)
-        print(sys.getrecursionlimit())
+        # get memory usage before changing columns
+        old_size = df.memory_usage(deep=True, index=True).sum() / B_IN_MB
 
+        if verbose:
+            print("old_size={} MB".format(int(old_size)))
 
-        #with gzip.open(filename, 'rb') as f:
-            #df = pickle.load(f)
-        #    df = pd.read_pickle(filename)
-        #    print("Data loaded.")
-            #print(df.p1)
-            #print(df)
-        #df = pd.read_pickle(filename, compression="gzip")
-        df = pd.read_pickle("accidents.pkl")
-        print("Data loaded.")
-        print(df.p2a)
-
-        return None
+        return df
 
     else:  # data file does not exist
         print("Error! File {} does not exist.".format(filename), file=sys.stderr)
@@ -73,10 +59,8 @@ if __name__ == "__main__":
     #pass
     # zde je ukazka pouziti, tuto cast muzete modifikovat podle libosti
     # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
-    # funkce.
-    print("Run main")
-    df = get_dataframe("accidents.pkl.gz")
+    # funkce
+    df = get_dataframe("accidents.pkl.gz", verbose=True)
     #plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
     #plot_damage(df, "02_priciny.png", True)
     #plot_surface(df, "03_stav.png", True)
-    print("Main end")
