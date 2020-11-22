@@ -30,21 +30,28 @@ def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
         old_size = df.memory_usage(deep=True, index=True).sum() / B_IN_MB
 
         # change data types of certain columns
-        # fill missing values where needed
-        toInt32Cols = ["p36", "p37", "weekday(p2a)", "p6",]
-        df[toInt32Cols] = df[toInt32Cols].replace(r'^\s*$', "-1", regex=True)
+        toInt32Cols = ["p36", "p37", "weekday(p2a)", "p6", "r", "s",] # columns that should be int32
+        df[toInt32Cols] = df[toInt32Cols].replace(r'^\s*$', "-1", regex=True) # fill missing values
         df[toInt32Cols] = df[toInt32Cols].astype("int32")
         df["p2a"] = df["date"] # date column - just copy "date" column
-        stringCols = ["h", "i", "j", "k", "l", "n", "o"]
-        df[stringCols] = df[stringCols].replace(r'^\s*$', np.NaN, regex=True)
-        print(df["p"])
+        df["p2b"] = df["p2b"].apply(lambda x: (str(int(x) // 100) if (int(x) // 100 > 9) \
+                                              else "0" + str(int(x) // 100) ) + ":" + (str(int(x) % 100) \
+                                              if (int(x) % 100 > 9) else "0" + str(int(x) % 100)) )
+        df["p2b"] = pd.to_datetime(df["p2b"], format="%H:%M", errors="coerce")
+        toStringCols = ["h", "i", "j", "k", "l", "n", "o", "p", "q", "t"] # columns that should be string
+        df[toStringCols] = df[toStringCols].astype("string")
+
+        dftypes = df.dtypes
+        for key, value in dftypes.items():
+            print("{} - {}".format(key, value))
+        #print(df["p2b"])
 
         # get new size
         new_size = df.memory_usage(deep=True, index=True).sum() / B_IN_MB
 
         if verbose:
-            print("old_size={} MB".format(int(old_size)))
-            print("new_size={} MB".format(int(new_size)))
+            print("old_size={} MB".format(round(old_size, 1)))
+            print("new_size={} MB".format(round(new_size, 1)))
 
         return df
 
