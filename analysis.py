@@ -61,23 +61,30 @@ def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
 def plot_conseq(df: pd.DataFrame, fig_location: str = None,
                 show_figure: bool = False):
     if df is not None: 
-        regions = df.region.unique()
-        df_total_accidents = df.groupby("region")["p1"].count() # total number of accidents by regions
-        df_dead = df.groupby("region")["p13a"].sum() # dead by regions
-        df_severely_injured = df.groupby("region")["p13b"].sum() # severely injured by regions
-        df_lightly_injured = df.groupby("region")["p13c"].sum() # lightly injured by regions
+        grouped_df = df.groupby('region').agg({'p1': 'count', 'p13a': 'sum', 'p13b': 'sum', 'p13c': 'sum'})
+        grouped_df = grouped_df.reset_index()
+        #print(grouped_df.head())
 
-        #print(df_total_accidents.head())
-        #print(df_dead.head())
-        #print(df_severely_injured.head())
-        #print(df_lightly_injured.head())
+        sns.set()
+        fig, axs = plt.subplots(4, 1, squeeze=False, figsize=(10, 10))
 
-        fig, ax = plt.subplots(4, 1, squeeze=False, figsize=(10, 10))
+        ax = sns.barplot(ax=axs[0, 0], x="region", y="p13a", data=grouped_df, order=grouped_df.sort_values('p1', ascending=False).region)
+        ax.set(xlabel="", ylabel="Počet")
+        ax.set_title("Úmrtia")
 
-        df_dead.plot(ax=ax[0,0], kind="bar", title="Úmrtia")
-        df_severely_injured.plot(ax=ax[1,0], kind="bar", title="Ťažko ranení")
-        df_lightly_injured.plot(ax=ax[2,0], kind="bar", title="Ľahko ranení")
-        df_total_accidents.plot(ax=ax[3,0], kind="bar", title="Celkom nehôd")
+        ax = sns.barplot(ax=axs[1, 0], x="region", y="p13b", data=grouped_df, order=grouped_df.sort_values('p1', ascending=False).region)
+        ax.set(xlabel="", ylabel="Počet")
+        ax.set_title("Ťažko ranení")
+
+        ax = sns.barplot(ax=axs[2, 0], x="region", y="p13c", data=grouped_df, order=grouped_df.sort_values('p1', ascending=False).region)
+        ax.set(xlabel="", ylabel="Počet")
+        ax.set_title("Ľahko ranení")
+
+        ax = sns.barplot(ax=axs[3, 0], x="region", y="p1", data=grouped_df, order=grouped_df.sort_values('p1', ascending=False).region)
+        ax.set(xlabel="", ylabel="Počet")
+        ax.set_title("Celkom nehôd")
+
+        plt.tight_layout()
 
         if fig_location is not None:
             plt.savefig(fig_location)
@@ -106,6 +113,6 @@ if __name__ == "__main__":
     # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
     # funkce
     df = get_dataframe("accidents.pkl.gz", verbose=True)
-    #plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
+    plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
     #plot_damage(df, "02_priciny.png", True)
     #plot_surface(df, "03_stav.png", True)
