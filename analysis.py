@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.8
 # coding=utf-8
+from distutils.command.register import register
 
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -146,7 +147,39 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None,
 # Ukol 4: povrch vozovky
 def plot_surface(df: pd.DataFrame, fig_location: str = None,
                  show_figure: bool = False):
-    pass
+    if df is not None:
+        regions = ['JHM', 'HKK', 'PLK', 'PHA']
+
+        sns.set()
+        fig, axs = plt.subplots(2, 2, squeeze=False, figsize=(14, 10))
+        idx = 0  # subplot index
+
+        tmp_df = df[['region', 'date', 'p1', 'p16']]
+        table = pd.crosstab(index=[tmp_df.region, tmp_df.date], columns=[tmp_df.p16], colnames=['p16'])
+        table = table.reset_index()
+        table = table.rename(columns={1: "clean", 2: "dirty", 3: "wet", 4: "mud", 5: "salt",
+                                      6: "no_salt", 7: "oil", 8: "snow", 9: "sudden_change", 0: "other"})
+
+        for reg in regions:
+            reg_df = table[table['region'] == reg]
+            reg_df = reg_df.resample("M", on="date").sum()
+
+            ax = reg_df.plot(ax=axs[idx // 2, idx % 2])
+            ax.set_title(reg)
+            ax.set(xlabel="Datum vzniku nehody", ylabel="Počet nehod")
+
+            idx += 1
+
+        plt.tight_layout()
+
+        if fig_location is not None:
+            plt.savefig(fig_location)
+
+        if show_figure:
+            plt.show()
+
+    else:  # df is None
+        print("Error! No DataFrame provided.", file=sys.stderr)
 
 
 if __name__ == "__main__":
@@ -154,7 +187,7 @@ if __name__ == "__main__":
     # zde je ukazka pouziti, tuto cast muzete modifikovat podle libosti
     # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
     # funkce
-    df = get_dataframe("accidents.pkl.gz", verbose=True)
+    df = get_dataframe("accidents.pkl.gz", verbose=False)
     plot_conseq(df, fig_location="01_nasledky.png", show_figure=False)
-    plot_damage(df, "02_priciny.png", True)
+    plot_damage(df, "02_priciny.png", False)
     plot_surface(df, "03_stav.png", True)
