@@ -88,16 +88,19 @@ def plot_conseq(df: pd.DataFrame, fig_location: str = None,
                          order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13a)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Úmrtia")
+        ax.set(xticklabels=[])
 
         ax = sns.barplot(ax=axs[1, 0], x="region", y="p13b", data=grouped_df,
                          order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13b)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Ťažko ranení")
+        ax.set(xticklabels=[])
 
         ax = sns.barplot(ax=axs[2, 0], x="region", y="p13c", data=grouped_df,
                          order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13c)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Ľahko ranení")
+        ax.set(xticklabels=[])
 
         ax = sns.barplot(ax=axs[3, 0], x="region", y="p1", data=grouped_df,
                          order=grouped_df.sort_values('p1', ascending=False).region, palette=palette)
@@ -133,7 +136,9 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None,
                                                  labels=['nezaviněná řidičem', 'nepřiměřená rychlost jízdy',
                                                          'nesprávné předjíždění', 'nedání přednosti v jízdě',
                                                          'nesprávný způsob jízdy', 'technická závada vozidla'])
-            reg_df['damage_bins'] = pd.cut(x=reg_df['p53'], bins=[0, 500, 2000, 5000, 10000, float("inf")],
+            reg_df['damage_bins'] = pd.cut(x=reg_df['p53'], right=False,
+                                           bins=[-1, 500, 2000, 5000, 10000, float("inf")],
+                                           #bins=[(-1, 500), (500, 2000), (2000, 5000), (5000, 10000), (10000, float("inf"))],
                                            labels=['< 50', '50 - 200', '200 - 500', '500 - 1000', '> 1000'])
 
             ax = sns.countplot(ax=axs[idx // 2, idx % 2], x="damage_bins", hue="damage_types_bins", data=reg_df)
@@ -202,6 +207,6 @@ if __name__ == "__main__":
     # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
     # funkce
     df = get_dataframe("accidents.pkl.gz", verbose=False)
-    plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
-    #plot_damage(df, "02_priciny.png", False)
+    #plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
+    plot_damage(df, "02_priciny.png", True)
     #plot_surface(df, "03_stav.png", True)
