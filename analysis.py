@@ -8,7 +8,6 @@ import seaborn as sns
 import numpy as np
 import os
 import sys
-import gzip
 
 # muzete pridat libovolnou zakladni knihovnu ci knihovnu predstavenou na prednaskach
 # dalsi knihovny pak na dotaz
@@ -146,11 +145,12 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None,
             ax.set(xlabel="Škoda [tis. Kč]", ylabel="Počet")
             idx += 1
 
-            # TODO - legend display
-            #if idx < len(regions) - 1:
-            #    plt.gca().legend().set_title('')
-            #else:
-            #    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)  # legend on the right
+            # sort out legend
+            if idx < len(regions):
+                handles, labels = ax.get_legend_handles_labels()
+                ax.legend(handles[:0], labels[:0], frameon=False)
+            else:  # last graph
+                plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Príčina nehody")  # legend on the right
         plt.tight_layout()
 
         if fig_location is not None:
@@ -189,6 +189,16 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None,
 
             idx += 1
 
+            if (idx-1) // 2 == 0:  # top graph
+                ax.set(xticklabels=[])
+                ax.set(xlabel="")
+
+            if idx < len(regions):
+                handles, labels = ax.get_legend_handles_labels()
+                ax.legend(handles[:0], labels[:0], frameon=False)
+            else:
+                plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Stav vozovky")  # legend on the right
+
         plt.tight_layout()
 
         if fig_location is not None:
@@ -207,6 +217,6 @@ if __name__ == "__main__":
     # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
     # funkce
     df = get_dataframe("accidents.pkl.gz", verbose=False)
-    #plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
+    plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
     plot_damage(df, "02_priciny.png", True)
-    #plot_surface(df, "03_stav.png", True)
+    plot_surface(df, "03_stav.png", True)
