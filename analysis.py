@@ -70,23 +70,37 @@ def plot_conseq(df: pd.DataFrame, fig_location: str = None,
         sns.set()
         fig, axs = plt.subplots(4, 1, squeeze=False, figsize=(10, 10))
 
+        palette = np.array(sns.color_palette("rocket", len(grouped_df)))
+        regs_p1 = list(grouped_df.sort_values('p1', ascending=False).region)
+
+        regs_p13a = list(grouped_df.sort_values('p13a', ascending=False).region)
+        regs_p13b = list(grouped_df.sort_values('p13b', ascending=False).region)
+        regs_p13c = list(grouped_df.sort_values('p13c', ascending=False).region)
+        palette_p13a = np.zeros((len(grouped_df), 3))
+        palette_p13b = np.zeros((len(grouped_df), 3))
+        palette_p13c = np.zeros((len(grouped_df), 3))
+        for i in range(len(regs_p1)):
+            palette_p13a[i] = palette[regs_p13a.index(regs_p1[i])]
+            palette_p13b[i] = palette[regs_p13b.index(regs_p1[i])]
+            palette_p13c[i] = palette[regs_p13c.index(regs_p1[i])]
+
         ax = sns.barplot(ax=axs[0, 0], x="region", y="p13a", data=grouped_df,
-                         order=grouped_df.sort_values('p1', ascending=False).region, palette='rocket')
+                         order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13a)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Úmrtia")
 
         ax = sns.barplot(ax=axs[1, 0], x="region", y="p13b", data=grouped_df,
-                         order=grouped_df.sort_values('p1', ascending=False).region, palette='rocket')
+                         order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13b)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Ťažko ranení")
 
         ax = sns.barplot(ax=axs[2, 0], x="region", y="p13c", data=grouped_df,
-                         order=grouped_df.sort_values('p1', ascending=False).region, palette='rocket')
+                         order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13c)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Ľahko ranení")
 
         ax = sns.barplot(ax=axs[3, 0], x="region", y="p1", data=grouped_df,
-                         order=grouped_df.sort_values('p1', ascending=False).region, palette='rocket')
+                         order=grouped_df.sort_values('p1', ascending=False).region, palette=palette)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Celkom nehôd")
 
@@ -188,6 +202,6 @@ if __name__ == "__main__":
     # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
     # funkce
     df = get_dataframe("accidents.pkl.gz", verbose=False)
-    plot_conseq(df, fig_location="01_nasledky.png", show_figure=False)
-    plot_damage(df, "02_priciny.png", False)
-    plot_surface(df, "03_stav.png", True)
+    plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
+    #plot_damage(df, "02_priciny.png", False)
+    #plot_surface(df, "03_stav.png", True)
