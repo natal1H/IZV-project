@@ -1,16 +1,11 @@
 #!/usr/bin/env python3.8
 # coding=utf-8
-from distutils.command.register import register
 
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
 import numpy as np
 import os
-import sys
-
-# muzete pridat libovolnou zakladni knihovnu ci knihovnu predstavenou na prednaskach
-# dalsi knihovny pak na dotaz
 
 """IZV project - 2nd part
     Author: Natália Holková
@@ -20,8 +15,14 @@ import sys
 B_IN_MB: int = 1048576  # 1 MB = 1 048 576 B
 
 
-# Ukol 1: nacteni dat
 def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
+    """
+    Project task n. 1: Unpack compressed DataFrame and edit columns to lower final size
+    :param filename: location of .pkl.gz file containing the DataFrame
+    :param verbose: Print original and new size in MB
+    :return: unpacked DataFrame
+    """
+
     if os.path.isfile(filename):  # data file exists
         df = pd.read_pickle(filename, compression="gzip")
 
@@ -38,7 +39,8 @@ def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
         df["p2a"] = df["date"]  # date column - just copy "date" column
         df["p2b"] = df["p2b"].apply(lambda x: (str(int(x) // 100) if (int(x) // 100 > 9)
                                                else "0" + str(int(x) // 100)) + ":" + (str(int(x) % 100)
-                                               if (int(x) % 100 > 9) else "0" + str(int(x) % 100)))
+                                                                                       if (int(x) % 100 > 9)
+                                                                                       else "0" + str(int(x) % 100)))
         df["p2b"] = pd.to_datetime(df["p2b"], format="%H:%M", errors="coerce")
         to_string_cols = ["h", "i", "j", "l", "n", "o", "t", ]  # columns that should be string
         df[to_string_cols] = df[to_string_cols].astype("string")
@@ -55,13 +57,17 @@ def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
         return df
 
     else:  # data file does not exist
-        print("Error! File {} does not exist.".format(filename), file=sys.stderr)
-        return None
+        raise FileNotFoundError("File " + filename + " containing data not found.")
 
 
-# Ukol 2: následky nehod v jednotlivých regionech
-def plot_conseq(df: pd.DataFrame, fig_location: str = None,
-                show_figure: bool = False):
+def plot_conseq(df: pd.DataFrame, fig_location: str = None, show_figure: bool = False):
+    """
+    Project task n. 2: Plot the accident consequences in each region
+    :param df: DataFrame containing accidents data
+    :param fig_location: if not None, then location where to store figure
+    :param show_figure: if True, will show the figure
+    :return: doesn't return anything
+    """
     if df is not None:
         grouped_df = df.groupby('region').agg({'p1': 'count', 'p13a': 'sum', 'p13b': 'sum', 'p13c': 'sum'})
         grouped_df = grouped_df.reset_index()
@@ -109,18 +115,23 @@ def plot_conseq(df: pd.DataFrame, fig_location: str = None,
         plt.tight_layout()
 
         if fig_location is not None:
-            plt.savefig(fig_location)
+            plt.savefig(fig_location)  # Store the figure
 
         if show_figure:
-            plt.show()
+            plt.show()  # Show the figure
 
     else:  # df is None
-        print("Error! No DataFrame provided.", file=sys.stderr)
+        raise ValueError("No DataFrame provided.")
 
 
-# Ukol3: příčina nehody a škoda
-def plot_damage(df: pd.DataFrame, fig_location: str = None,
-                show_figure: bool = False):
+def plot_damage(df: pd.DataFrame, fig_location: str = None, show_figure: bool = False):
+    """
+    Project task n. 3: Plot the accident damage in chosen regions
+    :param df: DataFrame containing accidents data
+    :param fig_location: if not None, then location where to store figure
+    :param show_figure: if True, will show the figure
+    :return: doesn't return anything
+    """
     if df is not None:
         regions = ['JHM', 'HKK', 'PLK', 'PHA']
 
@@ -132,16 +143,16 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None,
             reg_df = df[df['region'] == reg]
             reg_df = reg_df[['region', 'p12', 'p53']]
             reg_df['damage_types_bins'] = pd.cut(x=reg_df['p12'], bins=[0, 200, 300, 400, 500, 600, 700],
-                                                 labels=['nezaviněná řidičem', 'nepřiměřená rychlost jízdy',
-                                                         'nesprávné předjíždění', 'nedání přednosti v jízdě',
-                                                         'nesprávný způsob jízdy', 'technická závada vozidla'])
+                                                 labels=['nezavinená vodičom', 'neprimeraná rýchlost jazdy',
+                                                         'nesprávne predbiehanie', 'nedanie prednosti v jazde',
+                                                         'nesprávny spôsob jazdy', 'technická závada vozidla'])
             reg_df['damage_bins'] = pd.cut(x=reg_df['p53'], right=False,
                                            bins=[-1, 500, 2000, 5000, 10000, float("inf")],
-                                           #bins=[(-1, 500), (500, 2000), (2000, 5000), (5000, 10000), (10000, float("inf"))],
                                            labels=['< 50', '50 - 200', '200 - 500', '500 - 1000', '> 1000'])
 
             ax = sns.countplot(ax=axs[idx // 2, idx % 2], x="damage_bins", hue="damage_types_bins", data=reg_df)
             ax.set_title(reg)
+            ax.set_yscale('log')
             ax.set(xlabel="Škoda [tis. Kč]", ylabel="Počet")
             idx += 1
 
@@ -150,22 +161,28 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None,
                 handles, labels = ax.get_legend_handles_labels()
                 ax.legend(handles[:0], labels[:0], frameon=False)
             else:  # last graph
-                plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Príčina nehody")  # legend on the right
+                plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Príčina nehody",
+                           frameon=False)  # legend on the right
         plt.tight_layout()
 
         if fig_location is not None:
-            plt.savefig(fig_location)
+            plt.savefig(fig_location)  # Store the figure
 
         if show_figure:
-            plt.show()
+            plt.show()  # Show the figure
 
     else:  # df is None
-        print("Error! No DataFrame provided.", file=sys.stderr)
+        raise ValueError("No DataFrame provided.")
 
 
-# Ukol 4: povrch vozovky
-def plot_surface(df: pd.DataFrame, fig_location: str = None,
-                 show_figure: bool = False):
+def plot_surface(df: pd.DataFrame, fig_location: str = None, show_figure: bool = False):
+    """
+    Project task n. 4: Plot the surface types during accidents in chosen regions
+    :param df: DataFrame containing accidents data
+    :param fig_location: if not None, then location where to store figure
+    :param show_figure: if True, will show the figure
+    :return: doesn't return anything
+    """
     if df is not None:
         regions = ['JHM', 'HKK', 'PLK', 'PHA']
 
@@ -176,8 +193,10 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None,
         tmp_df = df[['region', 'date', 'p1', 'p16']]
         table = pd.crosstab(index=[tmp_df.region, tmp_df.date], columns=[tmp_df.p16], colnames=['p16'])
         table = table.reset_index()
-        table = table.rename(columns={1: "clean", 2: "dirty", 3: "wet", 4: "mud", 5: "salt",
-                                      6: "no_salt", 7: "oil", 8: "snow", 9: "sudden_change", 0: "other"})
+        table = table.rename(columns={1: "suchý neznečistený", 2: "suchý znečistený", 3: "mokrý", 4: "blato",
+                                      5: "námraza, ujazdený sneh - posypané", 6: "námraza, ujazdený sneh - neposypané",
+                                      7: "rozliaty olej, nafta apod.", 8: "súvislý sneh", 9: "náhla zmena stavu",
+                                      0: "iný stav"})
 
         for reg in regions:
             reg_df = table[table['region'] == reg]
@@ -185,11 +204,11 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None,
 
             ax = reg_df.plot(ax=axs[idx // 2, idx % 2])
             ax.set_title(reg)
-            ax.set(xlabel="Datum vzniku nehody", ylabel="Počet nehod")
+            ax.set(xlabel="Dátum vzniku nehody", ylabel="Počet nehôd")
 
             idx += 1
 
-            if (idx-1) // 2 == 0:  # top graph
+            if (idx - 1) // 2 == 0:  # top graph
                 ax.set(xticklabels=[])
                 ax.set(xlabel="")
 
@@ -197,26 +216,20 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None,
                 handles, labels = ax.get_legend_handles_labels()
                 ax.legend(handles[:0], labels[:0], frameon=False)
             else:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Stav vozovky")  # legend on the right
+                plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Stav vozovky",
+                           frameon=False)  # legend on the right
 
         plt.tight_layout()
 
         if fig_location is not None:
-            plt.savefig(fig_location)
+            plt.savefig(fig_location)  # Store the figure
 
         if show_figure:
-            plt.show()
+            plt.show()  # Show the figure
 
     else:  # df is None
-        print("Error! No DataFrame provided.", file=sys.stderr)
+        raise ValueError("No DataFrame provided.")
 
 
 if __name__ == "__main__":
-    # pass
-    # zde je ukazka pouziti, tuto cast muzete modifikovat podle libosti
-    # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
-    # funkce
-    df = get_dataframe("accidents.pkl.gz", verbose=False)
-    plot_conseq(df, fig_location="01_nasledky.png", show_figure=True)
-    plot_damage(df, "02_priciny.png", True)
-    plot_surface(df, "03_stav.png", True)
+    pass
