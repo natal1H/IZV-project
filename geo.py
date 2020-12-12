@@ -73,13 +73,11 @@ def plot_cluster(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_fig
     :return: doesn't return anything
     """
 
-    #ax = gdf.plot(figsize=(20, 20))
-
     gdf_c = gdf.to_crs("EPSG:5514")  # spravny system pro praci s velikostmi
     #gdf_c["area"] = gdf_c.area
     gdf_c = gdf_c.set_geometry(gdf_c.centroid).to_crs(epsg=3857)
 
-    ax = gdf_c.plot(figsize=(20, 20), alpha=0.3, color="tab:red")
+    ax = gdf_c.plot(figsize=(15, 15), markersize=1, color="tab:gray")
 
     # creating the clusters
     # Prvním krokem je vytvoření matice X o rozměrech (2645, 2) obsahující souřadnice (x,y)
@@ -100,12 +98,7 @@ def plot_cluster(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_fig
 
     gdf5 = gdf4.merge(gdf_coords, left_on="cluster", right_index=True).set_geometry("geometry_y")
 
-    # Zobrazíme graf tak, že velikost bodu bude odpovídat
-    #plt.figure(figsize=(20, 8))  ###
-    #ax = plt.gca()  ###
-    #gdf5.plot(ax=ax, markersize=gdf5["area"] / 1e5, column="cnt", legend=True)
     gdf5.plot(ax=ax, markersize=gdf5["cnt"], column="cnt", legend=True, alpha=0.6)
-    #ctx.add_basemap(ax, crs="epsg:3857", source=ctx.providers.OpenTopoMap, zoom=8, alpha=0.6)  ###
     ctx.add_basemap(ax, crs="epsg:3857", source=ctx.providers.Stamen.TonerLite, alpha=0.9)
 
     plt.axis("off")
