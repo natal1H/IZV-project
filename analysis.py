@@ -136,7 +136,7 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None, show_figure: bool = 
         regions = ['JHM', 'HKK', 'PLK', 'PHA']
 
         sns.set()
-        fig, axs = plt.subplots(2, 2, squeeze=False, figsize=(15, 10))
+        fig, axs = plt.subplots(2, 2, squeeze=False, sharey=True, figsize=(15, 10))
         idx = 0  # subplot index
 
         for reg in regions:
@@ -187,7 +187,7 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None, show_figure: bool =
         regions = ['JHM', 'HKK', 'PLK', 'PHA']
 
         sns.set()
-        fig, axs = plt.subplots(2, 2, squeeze=False, figsize=(14, 10))
+        fig, axs = plt.subplots(2, 2, squeeze=False, sharey=True, figsize=(14, 10))
         idx = 0  # subplot index
 
         tmp_df = df[['region', 'date', 'p1', 'p16']]

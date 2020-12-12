@@ -63,12 +63,63 @@ def plot_geo(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_figure:
     if show_figure:
         plt.show()  # Show the figure
 
+
 def plot_cluster(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_figure: bool = False):
-    """ Vykresleni grafu s lokalitou vsech nehod v kraji shlukovanych do clusteru """
+    """
+    Plot graph with locations of all accidents in region clustered into cluster
+    :param gdf: geopandas.GeoDataFrame containing accidents data
+    :param fig_location: if not None, then location where to store figure
+    :param show_figure: if True, will show the figure
+    :return: doesn't return anything
+    """
+
+    #ax = gdf.plot(figsize=(20, 20))
+
+    gdf_c = gdf.to_crs("EPSG:5514")  # spravny system pro praci s velikostmi
+    #gdf_c["area"] = gdf_c.area
+    gdf_c = gdf_c.set_geometry(gdf_c.centroid).to_crs(epsg=3857)
+
+    ax = gdf_c.plot(figsize=(20, 20), alpha=0.3, color="tab:red")
+
+    # creating the clusters
+    # Prvním krokem je vytvoření matice X o rozměrech (2645, 2) obsahující souřadnice (x,y)
+    coords = np.dstack([gdf_c.geometry.x, gdf_c.geometry.y]).reshape(-1, 2)
+
+    # unsupervised learning
+    db = sklearn.cluster.MiniBatchKMeans(n_clusters=15).fit(coords)
+
+    # Vytvoříme gdf4 obsahující kopii gdf_c a přidaný sloupec cluster odpovídající labelu
+    gdf4 = gdf_c.copy()
+    gdf4["cluster"] = db.labels_
+
+    # spojeni dohromad0 (funkce dissolve - geograficky ekvivalent groupby)
+    # h agregujeme jako pocet (a přejmenujeme na cnt)
+    gdf4 = gdf4.dissolve(by="cluster", aggfunc={"h": "count"}).rename(columns=dict(h="cnt"))
+
+    gdf_coords = geopandas.GeoDataFrame(geometry=geopandas.points_from_xy(db.cluster_centers_[:, 0], db.cluster_centers_[:, 1]))
+
+    gdf5 = gdf4.merge(gdf_coords, left_on="cluster", right_index=True).set_geometry("geometry_y")
+
+    # Zobrazíme graf tak, že velikost bodu bude odpovídat
+    #plt.figure(figsize=(20, 8))  ###
+    #ax = plt.gca()  ###
+    #gdf5.plot(ax=ax, markersize=gdf5["area"] / 1e5, column="cnt", legend=True)
+    gdf5.plot(ax=ax, markersize=gdf5["cnt"], column="cnt", legend=True, alpha=0.6)
+    #ctx.add_basemap(ax, crs="epsg:3857", source=ctx.providers.OpenTopoMap, zoom=8, alpha=0.6)  ###
+    ctx.add_basemap(ax, crs="epsg:3857", source=ctx.providers.Stamen.TonerLite, alpha=0.9)
+
+    plt.axis("off")
+    plt.title(f'Nehody v {REGION} kraji')
+
+    if fig_location is not None:
+        plt.savefig(fig_location)  # Store the figure
+
+    if show_figure:
+        plt.show()  # Show the figure
 
 
 if __name__ == "__main__":
     gdf = make_geo(pd.read_pickle("accidents.pkl.gz"))
-    plot_geo(gdf, "geo1.png", True)
-    #plot_cluster(gdf, "geo2.png", True)
+    #plot_geo(gdf, "geo1.png", True)
+    plot_cluster(gdf, "geo2.png", True)
 
