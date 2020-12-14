@@ -12,7 +12,7 @@ import os
     Login: xholko02
 """
 
-B_IN_MB: int = 1048576  # 1 MB = 1 048 576 B
+B_IN_MB: int = 1048576  # 1 MB = 1 048 576 B, constant for converting size to MB
 
 
 def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
@@ -69,44 +69,55 @@ def plot_conseq(df: pd.DataFrame, fig_location: str = None, show_figure: bool = 
     :return: doesn't return anything
     """
     if df is not None:
+        # group by regions
         grouped_df = df.groupby('region').agg({'p1': 'count', 'p13a': 'sum', 'p13b': 'sum', 'p13c': 'sum'})
         grouped_df = grouped_df.reset_index()
 
         sns.set()
-        fig, axs = plt.subplots(4, 1, squeeze=False, figsize=(10, 10))
+        fig, axs = plt.subplots(4, 1, squeeze=False, figsize=(10, 10))  # 4 plots, each in its own row
 
-        palette = np.array(sns.color_palette("rocket", len(grouped_df)))
-        regs_p1 = list(grouped_df.sort_values('p1', ascending=False).region)
+        # Prepare palettes for plots
+        palette = np.array(sns.color_palette("rocket", len(grouped_df)))  # palette for last plot
 
-        regs_p13a = list(grouped_df.sort_values('p13a', ascending=False).region)
-        regs_p13b = list(grouped_df.sort_values('p13b', ascending=False).region)
-        regs_p13c = list(grouped_df.sort_values('p13c', ascending=False).region)
+        regs_p1 = list(grouped_df.sort_values('p1', ascending=False).region)  # regions ordered by column p1
+        regs_p13a = list(grouped_df.sort_values('p13a', ascending=False).region)  # regions ordered by column p13a
+        regs_p13b = list(grouped_df.sort_values('p13b', ascending=False).region)  # regions ordered by column p13b
+        regs_p13c = list(grouped_df.sort_values('p13c', ascending=False).region)  # regions ordered by column p13c
+
+        # prepare empty palettes for other 3 plots (p13a, p13b, p13c)
         palette_p13a = np.zeros((len(grouped_df), 3))
         palette_p13b = np.zeros((len(grouped_df), 3))
         palette_p13c = np.zeros((len(grouped_df), 3))
+
+        # in loop go over regions sorted by p1 (last plot), check where that region should be by p13a/b/c column
+        # and place that region on that place in palette for p13a/b/c
         for i in range(len(regs_p1)):
             palette_p13a[i] = palette[regs_p13a.index(regs_p1[i])]
             palette_p13b[i] = palette[regs_p13b.index(regs_p1[i])]
             palette_p13c[i] = palette[regs_p13c.index(regs_p1[i])]
 
+        # plot by column p13a
         ax = sns.barplot(ax=axs[0, 0], x="region", y="p13a", data=grouped_df,
                          order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13a)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Úmrtia")
         ax.set(xticklabels=[])
 
+        # plot by column p13b
         ax = sns.barplot(ax=axs[1, 0], x="region", y="p13b", data=grouped_df,
                          order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13b)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Ťažko ranení")
         ax.set(xticklabels=[])
 
+        # plot by column p13c
         ax = sns.barplot(ax=axs[2, 0], x="region", y="p13c", data=grouped_df,
                          order=grouped_df.sort_values('p1', ascending=False).region, palette=palette_p13c)
         ax.set(xlabel="", ylabel="Počet")
         ax.set_title("Ľahko ranení")
         ax.set(xticklabels=[])
 
+        # plot by column p1
         ax = sns.barplot(ax=axs[3, 0], x="region", y="p1", data=grouped_df,
                          order=grouped_df.sort_values('p1', ascending=False).region, palette=palette)
         ax.set(xlabel="", ylabel="Počet")
@@ -136,31 +147,34 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None, show_figure: bool = 
         regions = ['JHM', 'HKK', 'PLK', 'PHA']
 
         sns.set()
-        fig, axs = plt.subplots(2, 2, squeeze=False, sharey=True, figsize=(15, 10))
+        fig, axs = plt.subplots(2, 2, squeeze=False, sharey="all", figsize=(15, 10))
         idx = 0  # subplot index
 
         for reg in regions:
-            reg_df = df[df['region'] == reg]
+            reg_df = df[df['region'] == reg]  # get df containing only entries for current region
             reg_df = reg_df[['region', 'p12', 'p53']]
+
+            # cut df by damage cause into bins, set labels
             reg_df['damage_types_bins'] = pd.cut(x=reg_df['p12'], bins=[0, 200, 300, 400, 500, 600, 700],
                                                  labels=['nezavinená vodičom', 'neprimeraná rýchlost jazdy',
                                                          'nesprávne predbiehanie', 'nedanie prednosti v jazde',
                                                          'nesprávny spôsob jazdy', 'technická závada vozidla'])
+            # cut df by damage size into bins, set labels
             reg_df['damage_bins'] = pd.cut(x=reg_df['p53'], right=False,
                                            bins=[-1, 500, 2000, 5000, 10000, float("inf")],
                                            labels=['< 50', '50 - 200', '200 - 500', '500 - 1000', '> 1000'])
 
             ax = sns.countplot(ax=axs[idx // 2, idx % 2], x="damage_bins", hue="damage_types_bins", data=reg_df)
             ax.set_title(reg)
-            ax.set_yscale('log')
+            ax.set_yscale('log')  # logarithmic scale
             ax.set(xlabel="Škoda [tis. Kč]", ylabel="Počet")
             idx += 1
 
             # sort out legend
-            if idx < len(regions):
+            if idx < len(regions):  # not the last graph
                 handles, labels = ax.get_legend_handles_labels()
                 ax.legend(handles[:0], labels[:0], frameon=False)
-            else:  # last graph
+            else:  # last graph - only it has legend
                 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Príčina nehody",
                            frameon=False)  # legend on the right
         plt.tight_layout()
@@ -187,10 +201,10 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None, show_figure: bool =
         regions = ['JHM', 'HKK', 'PLK', 'PHA']
 
         sns.set()
-        fig, axs = plt.subplots(2, 2, squeeze=False, sharey=True, figsize=(14, 10))
+        fig, axs = plt.subplots(2, 2, squeeze=False, sharey="all", figsize=(14, 10))
         idx = 0  # subplot index
 
-        tmp_df = df[['region', 'date', 'p1', 'p16']]
+        tmp_df = df[['region', 'date', 'p1', 'p16']]  # temporary df with only columns we need
         table = pd.crosstab(index=[tmp_df.region, tmp_df.date], columns=[tmp_df.p16], colnames=['p16'])
         table = table.reset_index()
         table = table.rename(columns={1: "suchý neznečistený", 2: "suchý znečistený", 3: "mokrý", 4: "blato",
@@ -199,8 +213,8 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None, show_figure: bool =
                                       0: "iný stav"})
 
         for reg in regions:
-            reg_df = table[table['region'] == reg]
-            reg_df = reg_df.resample("M", on="date").sum()
+            reg_df = table[table['region'] == reg]  # df with only entries for current region
+            reg_df = reg_df.resample("M", on="date").sum()  # resample to go by months
 
             ax = reg_df.plot(ax=axs[idx // 2, idx % 2])
             ax.set_title(reg)
@@ -208,14 +222,14 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None, show_figure: bool =
 
             idx += 1
 
-            if (idx - 1) // 2 == 0:  # top graph
+            if (idx - 1) // 2 == 0:  # top graph shares x labels with bottom
                 ax.set(xticklabels=[])
                 ax.set(xlabel="")
 
-            if idx < len(regions):
+            if idx < len(regions):  # not last graph - doesn't have legend
                 handles, labels = ax.get_legend_handles_labels()
                 ax.legend(handles[:0], labels[:0], frameon=False)
-            else:
+            else:  # last graph - has legend
                 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title="Stav vozovky",
                            frameon=False)  # legend on the right
 
