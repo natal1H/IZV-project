@@ -160,8 +160,11 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None, show_figure: bool = 
                                                          'nesprávne predbiehanie', 'nedanie prednosti v jazde',
                                                          'nesprávny spôsob jazdy', 'technická závada vozidla'])
             # cut df by damage size into bins, set labels
-            reg_df['damage_bins'] = pd.cut(x=reg_df['p53'], right=False,
-                                           bins=[-1, 500, 2000, 5000, 10000, float("inf")],
+            # kind of cheat with 10001 since last bin is "> 1000" (left side not includes 10000),
+            # intervals are (as understood from task description, ( = not includes, ] = includes:
+            # (-inf, 500), <500, 2000>, (2000, 5000>, (5000, 10000>, (10000, inf)
+            reg_df['damage_bins'] = pd.cut(x=reg_df['p53'], right=True,
+                                           bins=[-1, 499, 2000, 5000, 10000, float("inf")],
                                            labels=['< 50', '50 - 200', '200 - 500', '500 - 1000', '> 1000'])
 
             ax = sns.countplot(ax=axs[idx // 2, idx % 2], x="damage_bins", hue="damage_types_bins", data=reg_df)
@@ -179,7 +182,7 @@ def plot_damage(df: pd.DataFrame, fig_location: str = None, show_figure: bool = 
                            frameon=False)  # legend on the right
         plt.tight_layout()
 
-        if fig_location is not None:
+        if fig_location:
             plt.savefig(fig_location)  # Store the figure
 
         if show_figure:
@@ -235,7 +238,7 @@ def plot_surface(df: pd.DataFrame, fig_location: str = None, show_figure: bool =
 
         plt.tight_layout()
 
-        if fig_location is not None:
+        if fig_location:
             plt.savefig(fig_location)  # Store the figure
 
         if show_figure:
