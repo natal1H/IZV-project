@@ -43,21 +43,23 @@ def plot_geo(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_figure:
     :param show_figure: if True, will show the figure
     :return: doesn't return anything
     """
-    fig, ax = plt.subplots(1, 2, squeeze=False, figsize=(12, 5), sharex=True, sharey=True)
+    fig, ax = plt.subplots(1, 2, squeeze=False, figsize=(12, 5), sharex="all", sharey="all")
 
-    gdf[gdf["p5a"] == 1].plot(ax=ax[0, 0], markersize=1, color="r",  label="V obci")
-    ctx.add_basemap(ax[0, 0], crs=gdf.crs.to_string(), source=ctx.providers.Stamen.TonerLite, alpha=0.9)
+    # graph for accidents in town
+    gdf[gdf["p5a"] == 1].plot(ax=ax[0, 0], markersize=1, color="red",  label="V obci")  # accident locations
+    ctx.add_basemap(ax[0, 0], crs=gdf.crs.to_string(), source=ctx.providers.Stamen.TonerLite, alpha=0.9)  # map
     ax[0, 0].set_title(f'Nehody v {REGION} kraji: v obci')
     ax[0, 0].set_axis_off()
 
-    gdf[gdf["p5a"] == 2].plot(ax=ax[0, 1], markersize=1, color="g", label="Mimo obec")
-    ctx.add_basemap(ax[0, 1], crs=gdf.crs.to_string(), source=ctx.providers.Stamen.TonerLite, alpha=0.9)
+    # graph for accidents outside towns
+    gdf[gdf["p5a"] == 2].plot(ax=ax[0, 1], markersize=1, color="limegreen", label="Mimo obec")  # accident location
+    ctx.add_basemap(ax[0, 1], crs=gdf.crs.to_string(), source=ctx.providers.Stamen.TonerLite, alpha=0.9)  # map
     ax[0, 1].set_title(f'Nehody v {REGION} kraji: mimo obce')
     ax[0, 1].set_axis_off()
 
     plt.tight_layout()
 
-    if fig_location is not None:
+    if fig_location:
         plt.savefig(fig_location)  # Store the figure
 
     if show_figure:
@@ -72,39 +74,36 @@ def plot_cluster(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_fig
     :param show_figure: if True, will show the figure
     :return: doesn't return anything
     """
+    num_clusters = 15
 
-    gdf_c = gdf.to_crs("EPSG:5514")  # spravny system pro praci s velikostmi
-    #gdf_c["area"] = gdf_c.area
-    gdf_c = gdf_c.set_geometry(gdf_c.centroid).to_crs(epsg=3857)
+    gdf_c = gdf.to_crs("EPSG:5514")  # correct system for working with size
+    gdf_c = gdf_c.set_geometry(gdf_c.centroid).to_crs(epsg=3857)  # set geometry
 
-    ax = gdf_c.plot(figsize=(15, 15), markersize=1, color="tab:gray")
+    # plot where all accidents happened
+    ax = gdf_c.plot(figsize=(14, 8), markersize=1, color="tab:gray")
 
     # creating the clusters
-    # Prvním krokem je vytvoření matice X o rozměrech (2645, 2) obsahující souřadnice (x,y)
-    coords = np.dstack([gdf_c.geometry.x, gdf_c.geometry.y]).reshape(-1, 2)
+    coords = np.dstack([gdf_c.geometry.x, gdf_c.geometry.y]).reshape(-1, 2)  # matrix of (x,y) coordinates
+    db = sklearn.cluster.MiniBatchKMeans(n_clusters=num_clusters).fit(coords)  # unsupervised learning
 
-    # unsupervised learning
-    db = sklearn.cluster.MiniBatchKMeans(n_clusters=15).fit(coords)
-
-    # Vytvoříme gdf4 obsahující kopii gdf_c a přidaný sloupec cluster odpovídající labelu
-    gdf4 = gdf_c.copy()
+    gdf4 = gdf_c.copy()  # copy of gdf_c with added column for cluster label
     gdf4["cluster"] = db.labels_
 
-    # spojeni dohromad0 (funkce dissolve - geograficky ekvivalent groupby)
-    # h agregujeme jako pocet (a přejmenujeme na cnt)
+    # combine together with dissolve
     gdf4 = gdf4.dissolve(by="cluster", aggfunc={"h": "count"}).rename(columns=dict(h="cnt"))
-
-    gdf_coords = geopandas.GeoDataFrame(geometry=geopandas.points_from_xy(db.cluster_centers_[:, 0], db.cluster_centers_[:, 1]))
+    gdf_coords = geopandas.GeoDataFrame(geometry=geopandas.points_from_xy(db.cluster_centers_[:, 0],
+                                                                          db.cluster_centers_[:, 1]))
 
     gdf5 = gdf4.merge(gdf_coords, left_on="cluster", right_index=True).set_geometry("geometry_y")
 
+    # plot clusters
     gdf5.plot(ax=ax, markersize=gdf5["cnt"], column="cnt", legend=True, alpha=0.6)
     ctx.add_basemap(ax, crs="epsg:3857", source=ctx.providers.Stamen.TonerLite, alpha=0.9)
 
     plt.axis("off")
     plt.title(f'Nehody v {REGION} kraji')
 
-    if fig_location is not None:
+    if fig_location:
         plt.savefig(fig_location)  # Store the figure
 
     if show_figure:
@@ -112,7 +111,5 @@ def plot_cluster(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_fig
 
 
 if __name__ == "__main__":
-    gdf = make_geo(pd.read_pickle("accidents.pkl.gz"))
-    #plot_geo(gdf, "geo1.png", True)
-    plot_cluster(gdf, "geo2.png", True)
+    pass
 

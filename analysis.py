@@ -125,7 +125,7 @@ def plot_conseq(df: pd.DataFrame, fig_location: str = None, show_figure: bool = 
 
         plt.tight_layout()
 
-        if fig_location is not None:
+        if fig_location:
             plt.savefig(fig_location)  # Store the figure
 
         if show_figure:
