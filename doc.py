@@ -30,18 +30,19 @@ def create_graph(c, df):
     total_bikes = stacked[1, 1] + stacked[1, 6] + stacked[1, 8] + stacked[2, 1] + stacked[2, 6] + stacked[2, 8]
 
     # status, cars, bikes
-    data = [["Dobrý", (stacked[3, 1] + stacked[4, 1]) / total_cars * 100, (stacked[1, 1] + stacked[2, 1]) / total_bikes * 100],
-            ["Úraz", (stacked[3, 6] + stacked[4, 6]) / total_cars * 100, (stacked[1, 6] + stacked[2, 6]) / total_bikes * 100],
-            ["Smrť", (stacked[3, 8] + stacked[4, 8]) / total_cars * 100, (stacked[1, 8] + stacked[2, 8]) / total_bikes * 100],
+    data = [["Good", (stacked[3, 1] + stacked[4, 1]) / total_cars * 100, (stacked[1, 1] + stacked[2, 1]) / total_bikes * 100],
+            ["Injured", (stacked[3, 6] + stacked[4, 6]) / total_cars * 100, (stacked[1, 6] + stacked[2, 6]) / total_bikes * 100],
+            ["Dead", (stacked[3, 8] + stacked[4, 8]) / total_cars * 100, (stacked[1, 8] + stacked[2, 8]) / total_bikes * 100],
             ]
 
     plt.style.use("bmh")
     df2 = pd.DataFrame(data, columns=["status", "cars", "bikes"])
     ax = df2.plot(x="status", y=["cars", "bikes"], kind="bar", figsize=(9, 9))
     ax.set_yscale('log')  # logarithmic scale
-    ax.set(xlabel="Driver status after accident", ylabel="% from total accidents")
+    plt.xlabel("Driver status after accident", fontsize=16)
+    plt.ylabel("% from total accidents", fontsize=16)
     ax.legend(["car", "motorcycle"])
-    plt.suptitle("Graph of vehicle type influence on driver status")
+    plt.suptitle("Graph of vehicle type influence on driver status", fontsize=20, fontweight='bold')
 
     plt.savefig("fig.png")  # Store the figure
 
@@ -58,19 +59,29 @@ def create_table(c, df):
 
     stacked = df_new.pivot_table(index=["p44"], columns='p57', aggfunc='size', fill_value=0).stack()
 
-    total_cars = stacked[3, 1] + stacked[3, 6] + stacked[3, 8] + stacked[4, 1] + stacked[4, 6] + stacked[4, 8]
-    total_bikes = stacked[1, 1] + stacked[1, 6] + stacked[1, 8] + stacked[2, 1] + stacked[2, 6] + stacked[2, 8]
+    data = [[None, 'Good', 'Injured', 'Dead'],
+            ['Cars', stacked[3, 1] + stacked[4, 1], stacked[3, 6] + stacked[4, 6], stacked[3, 8] + stacked[4, 8]],
+            ['Motorcycles', stacked[1, 1] + stacked[2, 1], stacked[1, 6] + stacked[2, 6], stacked[1, 8] + stacked[2, 8]],
+            ['Total', stacked[3, 1] + stacked[4, 1] + stacked[1, 1] + stacked[2, 1],
+             stacked[3, 6] + stacked[4, 6] + stacked[1, 6] + stacked[2, 6],
+             stacked[3, 8] + stacked[4, 8] + stacked[1, 8] + stacked[2, 8]]]
 
-    data = [[None, 'col1', 'col2'], ['row1', 1234, 1567], ['row2', 2345, 2678]]
-    t = Table(data, style=[('FONTNAME', (0, 0), (-1, -1), 'Helvetica'), ('FONTSIZE', (0, 0), (-1, -1), 20),
-                           ('LEADING', (0, 0), (-1, -1), 20), ('GRID', (0, 1), (-1, -1), 0.5, '#808080'),
+    # print table to output -- todo: this format?
+    print(f"{' ' * 12}|{data[0][1]:10}|{data[0][2]:10}|{data[0][1]:10}")
+    print(("-" * 12) + "+" + ("-" * 10) + "+" + ("-" * 10) + "+" + ("-" * 10))
+    print(f"{data[1][0]:12}|{data[1][1]:10}|{data[1][2]:10}|{data[1][1]:10}")
+    print(f"{data[2][0]:12}|{data[2][1]:10}|{data[2][2]:10}|{data[2][1]:10}")
+    print(f"{data[3][0]:12}|{data[3][1]:10}|{data[3][2]:10}|{data[3][1]:10}")
+
+    t = Table(data, style=[('FONTNAME', (0, 0), (-1, -1), 'Helvetica'), ('FONTSIZE', (0, 0), (-1, -1), 12),
+                           ('LEADING', (0, 0), (-1, -1), 12), ('GRID', (0, 1), (-1, -1), 0.5, '#808080'),
                            ('GRID', (1, 0), (-1, 0), 0.5, '#808080'), ('BACKGROUND', (0, 1), (0, -1), '#dcf1fa'),
-                           ('BACKGROUND', (1, 0), (-1, 0), '#dcf1fa'), ('SPAN', (0, 1), (0, -1)),
+                           ('BACKGROUND', (1, 0), (-1, 0), '#dcf1fa'),
                            ('VALIGN', (0, 1), (0, -1), 'MIDDLE')])
     t.hAlign = 'LEFT'
 
     t.wrapOn(c, 9 * cm, 5 * cm)
-    t.drawOn(c, 11 * cm, 9.7 * cm)
+    t.drawOn(c, 11 * cm, 12.7 * cm)
 
 
 def create_report(df):
@@ -78,12 +89,12 @@ def create_report(df):
     styles = getSampleStyleSheet()
     style_normal = styles['Normal']
     style_normal.fontName = 'Helvetica'
-    style_normal.fontSize = 16
+    style_normal.fontSize = 14
     style_normal.textColor = (.4, .4, .4)
     style_normal.leading = 1.2 * style_normal.fontSize
     style_heading = styles['Heading1']
     style_heading.fontName = 'Helvetica'
-    style_heading.fontSize = 20
+    style_heading.fontSize = 16
     style_heading.spaceAfter = 20
 
     # create canvas
@@ -99,7 +110,7 @@ def create_report(df):
     # Heading text
     c.restoreState()
     c.setFillColor('white')
-    c.setFont('Helvetica', 28)
+    c.setFont('Helvetica', 25)
     c.drawString(2 * cm, 25.7 * cm, 'Influence of vehicle type on driver status')
 
     # Text
