@@ -3,9 +3,12 @@
 
 from matplotlib import pyplot as plt
 import pandas as pd
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import cm
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import Paragraph, Frame, Image, Table, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 import os
-import seaborn as sns
-import numpy as np
 
 """IZV project - Final part
     Author: Natália Holková
@@ -13,53 +16,111 @@ import numpy as np
 """
 
 
-def create_graph(df):
+def create_graph(c, df):
     # Get new DataFrame with only columns I need
-    # df_new = df[["p1", "date", "p44", "p57"]]
     df_new = df[["p1", "date", "p44", "p57"]]
-    # print(df_new.head())
-    print("Before drop:", len(df_new))
 
     # only keep rows, where p44 (type of vehicle) is car or motorcycle (== 1/2/3/4)
     df_new = df_new[df_new["p44"].isin([1, 2, 3, 4])]
     df_new = df_new[df_new["p57"].isin([1, 6, 8])]
 
-    print(df_new.head())
-    print("After drop:", len(df_new))
+    stacked = df_new.pivot_table(index=["p44"], columns='p57', aggfunc='size', fill_value=0).stack()
 
-    # grouped_df = df_new.groupby('p44')
-    # grouped_df = grouped_df.reset_index()
-    # print(grouped_df)
+    total_cars = stacked[3, 1] + stacked[3, 6] + stacked[3, 8] + stacked[4, 1] + stacked[4, 6] + stacked[4, 8]
+    total_bikes = stacked[1, 1] + stacked[1, 6] + stacked[1, 8] + stacked[2, 1] + stacked[2, 6] + stacked[2, 8]
 
-    table = df_new.pivot_table(index=["p44"], columns='p57', aggfunc='size', fill_value=0)
-    print(table)
+    # status, cars, bikes
+    data = [["Dobrý", (stacked[3, 1] + stacked[4, 1]) / total_cars * 100, (stacked[1, 1] + stacked[2, 1]) / total_bikes * 100],
+            ["Úraz", (stacked[3, 6] + stacked[4, 6]) / total_cars * 100, (stacked[1, 6] + stacked[2, 6]) / total_bikes * 100],
+            ["Smrť", (stacked[3, 8] + stacked[4, 8]) / total_cars * 100, (stacked[1, 8] + stacked[2, 8]) / total_bikes * 100],
+            ]
 
-    # prepare for graph
-    # df_for_graph = table
+    plt.style.use("bmh")
+    df2 = pd.DataFrame(data, columns=["status", "cars", "bikes"])
+    ax = df2.plot(x="status", y=["cars", "bikes"], kind="bar", figsize=(9, 9))
+    ax.set_yscale('log')  # logarithmic scale
+    ax.set(xlabel="Driver status after accident", ylabel="% from total accidents")
+    ax.legend(["car", "motorcycle"])
+    plt.suptitle("Graph of vehicle type influence on driver status")
 
-    """
-    ##########
-    sns.set()
-    # fig, axs = plt.subplots(2, 2, squeeze=False, sharey="all", figsize=(15, 10))
-    # plt.figure(figsize=(15, 10))
+    plt.savefig("fig.png")  # Store the figure
 
-    # cut df by damage cause into bins, set labels
-    df_new['vehicle_bins'] = pd.cut(x=df_new['p44'], bins=[0, 2, 4],
-                                    labels=['motocykel', 'auto'])
-    # cut df by damage size into bins, set labels
-    # df_new['damage_bins'] = pd.cut(x=df_new['p53'], right=True,
-    #                               bins=[-1, 499, 2000, 5000, 10000, float("inf")],
-    #                               labels=['< 50', '50 - 200', '200 - 500', '500 - 1000', '> 1000'])
+    Image('fig.png', width=9 * cm, height=9 * cm).drawOn(c, 1 * cm, 8.7 * cm)
 
-    # ax = sns.countplot(x="damage_bins", hue="damage_types_bins", data=df_new)
-    # ax.set_title("TEST")
-    # ax.set(xlabel="Škoda [tis. Kč]", ylabel="Počet")
-    print("END")
-    """
+
+def create_table(c, df):
+    # Get new DataFrame with only columns I need
+    df_new = df[["p1", "date", "p44", "p57"]]
+
+    # only keep rows, where p44 (type of vehicle) is car or motorcycle (== 1/2/3/4)
+    df_new = df_new[df_new["p44"].isin([1, 2, 3, 4])]
+    df_new = df_new[df_new["p57"].isin([1, 6, 8])]
+
+    stacked = df_new.pivot_table(index=["p44"], columns='p57', aggfunc='size', fill_value=0).stack()
+
+    total_cars = stacked[3, 1] + stacked[3, 6] + stacked[3, 8] + stacked[4, 1] + stacked[4, 6] + stacked[4, 8]
+    total_bikes = stacked[1, 1] + stacked[1, 6] + stacked[1, 8] + stacked[2, 1] + stacked[2, 6] + stacked[2, 8]
+
+    data = [[None, 'col1', 'col2'], ['row1', 1234, 1567], ['row2', 2345, 2678]]
+    t = Table(data, style=[('FONTNAME', (0, 0), (-1, -1), 'Helvetica'), ('FONTSIZE', (0, 0), (-1, -1), 20),
+                           ('LEADING', (0, 0), (-1, -1), 20), ('GRID', (0, 1), (-1, -1), 0.5, '#808080'),
+                           ('GRID', (1, 0), (-1, 0), 0.5, '#808080'), ('BACKGROUND', (0, 1), (0, -1), '#dcf1fa'),
+                           ('BACKGROUND', (1, 0), (-1, 0), '#dcf1fa'), ('SPAN', (0, 1), (0, -1)),
+                           ('VALIGN', (0, 1), (0, -1), 'MIDDLE')])
+    t.hAlign = 'LEFT'
+
+    t.wrapOn(c, 9 * cm, 5 * cm)
+    t.drawOn(c, 11 * cm, 9.7 * cm)
+
+
+def create_report(df):
+    # prepare styles
+    styles = getSampleStyleSheet()
+    style_normal = styles['Normal']
+    style_normal.fontName = 'Helvetica'
+    style_normal.fontSize = 16
+    style_normal.textColor = (.4, .4, .4)
+    style_normal.leading = 1.2 * style_normal.fontSize
+    style_heading = styles['Heading1']
+    style_heading.fontName = 'Helvetica'
+    style_heading.fontSize = 20
+    style_heading.spaceAfter = 20
+
+    # create canvas
+    c = canvas.Canvas("doc.pdf", pagesize=A4)
+
+    c.setFillColor('white')
+    c.saveState()
+
+    # Heading rectangle
+    c.setFillColor('blue')
+    c.rect(1 * cm, 24.7 * cm, 19 * cm, 3 * cm, stroke=0, fill=1)
+
+    # Heading text
+    c.restoreState()
+    c.setFillColor('white')
+    c.setFont('Helvetica', 28)
+    c.drawString(2 * cm, 25.7 * cm, 'Influence of vehicle type on driver status')
+
+    # Text
+    story = []
+    story.append(Paragraph("Random", style_heading))
+    story.append(Paragraph("Something something...<u>Something</u>\n...", style_normal))
+
+    f = Frame(1 * cm, 18.7 * cm, 19 * cm, 5 * cm, showBoundary=1)
+    f.addFromList(story, c)
+
+    # Graph
+    create_graph(c, df)
+
+    # Table
+    create_table(c, df)
+
+    c.showPage()
+    c.save()
+
 
 if __name__ == "__main__":
-    #pass
-
     if os.path.isfile("accidents.pkl.gz"):  # data file exists
         df = pd.read_pickle("accidents.pkl.gz")
     else:  # data file does not exist
@@ -67,4 +128,5 @@ if __name__ == "__main__":
 
     # create date column in DataFrame
     df["date"] = pd.to_datetime(df["p2a"], format="%Y-%m-%d", errors="coerce")
-    create_graph(df)
+    create_report(df)
+
