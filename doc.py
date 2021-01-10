@@ -30,14 +30,17 @@ def create_graph(c, df):
     total_bikes = stacked[1, 1] + stacked[1, 6] + stacked[1, 8] + stacked[2, 1] + stacked[2, 6] + stacked[2, 8]
 
     # status, cars, bikes
-    data = [["Good", (stacked[3, 1] + stacked[4, 1]) / total_cars * 100, (stacked[1, 1] + stacked[2, 1]) / total_bikes * 100],
-            ["Injured", (stacked[3, 6] + stacked[4, 6]) / total_cars * 100, (stacked[1, 6] + stacked[2, 6]) / total_bikes * 100],
-            ["Dead", (stacked[3, 8] + stacked[4, 8]) / total_cars * 100, (stacked[1, 8] + stacked[2, 8]) / total_bikes * 100],
+    data = [["Good", (stacked[3, 1] + stacked[4, 1]) / total_cars * 100,
+             (stacked[1, 1] + stacked[2, 1]) / total_bikes * 100],
+            ["Injured", (stacked[3, 6] + stacked[4, 6]) / total_cars * 100,
+             (stacked[1, 6] + stacked[2, 6]) / total_bikes * 100],
+            ["Dead", (stacked[3, 8] + stacked[4, 8]) / total_cars * 100,
+             (stacked[1, 8] + stacked[2, 8]) / total_bikes * 100],
             ]
 
-    plt.style.use("bmh")
+    plt.style.use("fivethirtyeight")
     df2 = pd.DataFrame(data, columns=["status", "cars", "bikes"])
-    ax = df2.plot(x="status", y=["cars", "bikes"], kind="bar", figsize=(9, 9))
+    ax = df2.plot(x="status", y=["cars", "bikes"], kind="bar", figsize=(10, 10), rot=0)
     ax.set_yscale('log')  # logarithmic scale
     plt.xlabel("Driver status after accident", fontsize=16)
     plt.ylabel("% from total accidents", fontsize=16)
@@ -46,7 +49,7 @@ def create_graph(c, df):
 
     plt.savefig("fig.png")  # Store the figure
 
-    Image('fig.png', width=9 * cm, height=9 * cm).drawOn(c, 1 * cm, 8.7 * cm)
+    Image('fig.png', width=10 * cm, height=10 * cm).drawOn(c, 2 * cm, 7 * cm)
 
 
 def create_table(c, df):
@@ -61,12 +64,13 @@ def create_table(c, df):
 
     data = [[None, 'Good', 'Injured', 'Dead'],
             ['Cars', stacked[3, 1] + stacked[4, 1], stacked[3, 6] + stacked[4, 6], stacked[3, 8] + stacked[4, 8]],
-            ['Motorcycles', stacked[1, 1] + stacked[2, 1], stacked[1, 6] + stacked[2, 6], stacked[1, 8] + stacked[2, 8]],
+            ['Motorcycles', stacked[1, 1] + stacked[2, 1], stacked[1, 6] + stacked[2, 6],
+             stacked[1, 8] + stacked[2, 8]],
             ['Total', stacked[3, 1] + stacked[4, 1] + stacked[1, 1] + stacked[2, 1],
              stacked[3, 6] + stacked[4, 6] + stacked[1, 6] + stacked[2, 6],
              stacked[3, 8] + stacked[4, 8] + stacked[1, 8] + stacked[2, 8]]]
 
-    # print table to output -- todo: this format?
+    # print table to output
     print(f"{' ' * 12}|{data[0][1]:10}|{data[0][2]:10}|{data[0][1]:10}")
     print(("-" * 12) + "+" + ("-" * 10) + "+" + ("-" * 10) + "+" + ("-" * 10))
     print(f"{data[1][0]:12}|{data[1][1]:10}|{data[1][2]:10}|{data[1][1]:10}")
@@ -74,14 +78,44 @@ def create_table(c, df):
     print(f"{data[3][0]:12}|{data[3][1]:10}|{data[3][2]:10}|{data[3][1]:10}")
 
     t = Table(data, style=[('FONTNAME', (0, 0), (-1, -1), 'Helvetica'), ('FONTSIZE', (0, 0), (-1, -1), 12),
-                           ('LEADING', (0, 0), (-1, -1), 12), ('GRID', (0, 1), (-1, -1), 0.5, '#808080'),
-                           ('GRID', (1, 0), (-1, 0), 0.5, '#808080'), ('BACKGROUND', (0, 1), (0, -1), '#dcf1fa'),
-                           ('BACKGROUND', (1, 0), (-1, 0), '#dcf1fa'),
+                           ('LEADING', (0, 0), (-1, -1), 12),
+                           ('TEXTCOLOR', (0, 1), (0, -2), "#ffffff"),
+                           ('BACKGROUND', (0, 1), (0, 1), '#008fd5'),  # cars heading
+                           ('BACKGROUND', (0, 2), (0, 2), '#fc4f30'),  # motorcycles heading
+                           ('BACKGROUND', (0, 3), (0, 3), '#f0f0f0'),
+                           ('BACKGROUND', (1, 0), (-1, 0), '#f0f0f0'),  # First row headings
+                           ('GRID', (0, 0), (-1, -1), 0.5, '#f0f0f0'),
                            ('VALIGN', (0, 1), (0, -1), 'MIDDLE')])
     t.hAlign = 'LEFT'
+    t.vAlign = 'TOP'
 
-    t.wrapOn(c, 9 * cm, 5 * cm)
-    t.drawOn(c, 11 * cm, 12.7 * cm)
+    t.wrapOn(c, 16 * cm, 4 * cm)
+    t.drawOn(c, 2 * cm, 3 * cm)
+
+
+def get_additional_data(df):
+    res = {"total_accidents": len(df)}
+
+    # Get new DataFrame with only columns I need
+    df_new = df[["p1", "date", "p44", "p57"]]
+
+    # only keep rows, where p44 (type of vehicle) is car or motorcycle (== 1/2/3/4)
+    df_new = df_new[df_new["p44"].isin([1, 2, 3, 4])]
+    df_new = df_new[df_new["p57"].isin([1, 6, 8])]
+
+    stacked = df_new.pivot_table(index=["p44"], columns='p57', aggfunc='size', fill_value=0).stack()
+
+    total_cars = stacked[3, 1] + stacked[3, 6] + stacked[3, 8] + stacked[4, 1] + stacked[4, 6] + stacked[4, 8]
+    res["total_car_accidents"] = total_cars
+    total_bikes = stacked[1, 1] + stacked[1, 6] + stacked[1, 8] + stacked[2, 1] + stacked[2, 6] + stacked[2, 8]
+    res["total_bike_accidents"] = total_bikes
+
+    # print dictionary to output
+    print("total accidents:", res["total_accidents"])
+    print("total car accidents with driver ok/injured/dead:", res["total_car_accidents"])
+    print("total motorcycle accidents with driver ok/injured/dead:", res["total_bike_accidents"])
+
+    return res
 
 
 def create_report(df):
@@ -89,8 +123,8 @@ def create_report(df):
     styles = getSampleStyleSheet()
     style_normal = styles['Normal']
     style_normal.fontName = 'Helvetica'
-    style_normal.fontSize = 14
-    style_normal.textColor = (.4, .4, .4)
+    style_normal.fontSize = 12
+    style_normal.textColor = "#424949"
     style_normal.leading = 1.2 * style_normal.fontSize
     style_heading = styles['Heading1']
     style_heading.fontName = 'Helvetica'
@@ -104,25 +138,53 @@ def create_report(df):
     c.saveState()
 
     # Heading rectangle
-    c.setFillColor('blue')
-    c.rect(1 * cm, 24.7 * cm, 19 * cm, 3 * cm, stroke=0, fill=1)
+    c.setFillColor('#21618c')
+    c.rect(2 * cm, 24 * cm, 17 * cm, 3 * cm, stroke=0, fill=1)
 
     # Heading text
     c.restoreState()
     c.setFillColor('white')
-    c.setFont('Helvetica', 25)
-    c.drawString(2 * cm, 25.7 * cm, 'Influence of vehicle type on driver status')
+    c.setFont('Helvetica', 24)
+    c.drawString(3 * cm, 25 * cm, 'Influence of vehicle type on driver status')
 
     # Text
-    story = []
-    story.append(Paragraph("Random", style_heading))
-    story.append(Paragraph("Something something...<u>Something</u>\n...", style_normal))
+    c.setFillColor('#f0f0f0')
+    c.rect(2 * cm, 18 * cm, 17 * cm, 5 * cm, stroke=0, fill=1)
+    additional_data = get_additional_data(df)
+    story = [Paragraph(
+        "It is said that <b>motorcycles are deadlier than cars</b>. " +
+        "In this report, we show real accident data from the Czech republic " +
+        "how the vehicle type influences the severity of injuries sustained by the driver in the accident. ",
+        style_normal
+    ),
+        Spacer(0, 0.4 * cm),
+        Paragraph(
+        "In total, there were <b>" + str(additional_data["total_accidents"]) + "</b> accidents in our dataset.\n" +
+        "However, we only worked with those where the vehicle our either car or motorcycle, " +
+        "and the driver afterward was good, injured, or dead. This resulted in <b>" +
+        str(additional_data["total_car_accidents"]) + "</b> car and <b>" + str(additional_data["total_bike_accidents"])
+        + "</b> motorcycle accidents.",
+        style_normal
+    )]
 
-    f = Frame(1 * cm, 18.7 * cm, 19 * cm, 5 * cm, showBoundary=1)
+    f = Frame(2 * cm, 18 * cm, 17 * cm, 5 * cm, showBoundary=0)
     f.addFromList(story, c)
 
     # Graph
     create_graph(c, df)
+    c.setFillColor('#f0f0f0')
+    c.rect(13 * cm, 7 * cm, 6 * cm, 10 * cm, stroke=0, fill=1)
+
+    story = [Paragraph(
+        "The graph shows <b>driver status</b> after an accident - either the driver was <b>OK</b>, <b>injured</b>, " +
+        "or <b>dead</b>.\nThe data are normalized because the number of car accidents is much higher.\n" +
+        "While in the vast majority of cases the driver is OK, " +
+        "the graph shows that motorcycle accidents <b>result in death</b> slightly <b>more</b> often " +
+        "than car accidents.",
+        style_normal)]
+
+    f = Frame(13 * cm, 7 * cm, 6 * cm, 10 * cm, showBoundary=0)
+    f.addFromList(story, c)
 
     # Table
     create_table(c, df)
@@ -133,11 +195,10 @@ def create_report(df):
 
 if __name__ == "__main__":
     if os.path.isfile("accidents.pkl.gz"):  # data file exists
-        df = pd.read_pickle("accidents.pkl.gz")
+        dataframe = pd.read_pickle("accidents.pkl.gz")
     else:  # data file does not exist
         raise FileNotFoundError("File accidents.pkl.gz containing data not found.")
 
     # create date column in DataFrame
-    df["date"] = pd.to_datetime(df["p2a"], format="%Y-%m-%d", errors="coerce")
-    create_report(df)
-
+    dataframe["date"] = pd.to_datetime(dataframe["p2a"], format="%Y-%m-%d", errors="coerce")
+    create_report(dataframe)
