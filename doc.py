@@ -17,8 +17,18 @@ import os
 
 
 def create_graph(c, df):
+    """
+    Creates a graph about about vehicle type influence on driver injuries.
+    Graph is normalized so that y-axis shows percentage.
+    This graph is then displayed in report on predefined position.
+
+    :param c: report canvas
+    :param df: DataFrame containing accidents
+    :return: nothing
+    """
+
     # Get new DataFrame with only columns I need
-    df_new = df[["p1", "date", "p44", "p57"]]
+    df_new = df[["p1", "p44", "p57"]]
 
     # only keep rows, where p44 (type of vehicle) is car or motorcycle (== 1/2/3/4)
     df_new = df_new[df_new["p44"].isin([1, 2, 3, 4])]
@@ -26,6 +36,7 @@ def create_graph(c, df):
 
     stacked = df_new.pivot_table(index=["p44"], columns='p57', aggfunc='size', fill_value=0).stack()
 
+    # get total cars and bike accidents to later transform data to %
     total_cars = stacked[3, 1] + stacked[3, 6] + stacked[3, 8] + stacked[4, 1] + stacked[4, 6] + stacked[4, 8]
     total_bikes = stacked[1, 1] + stacked[1, 6] + stacked[1, 8] + stacked[2, 1] + stacked[2, 6] + stacked[2, 8]
 
@@ -53,8 +64,17 @@ def create_graph(c, df):
 
 
 def create_table(c, df):
+    """
+    Creates a table showing total numbers of car and motorcycle accidents for each driver status.
+    Then displays this table in report on predefined position.
+
+    :param c: report canvas
+    :param df: DataFrame containing accidents
+    :return: nothing
+    """
+
     # Get new DataFrame with only columns I need
-    df_new = df[["p1", "date", "p44", "p57"]]
+    df_new = df[["p1", "p44", "p57"]]
 
     # only keep rows, where p44 (type of vehicle) is car or motorcycle (== 1/2/3/4)
     df_new = df_new[df_new["p44"].isin([1, 2, 3, 4])]
@@ -62,6 +82,7 @@ def create_table(c, df):
 
     stacked = df_new.pivot_table(index=["p44"], columns='p57', aggfunc='size', fill_value=0).stack()
 
+    # create the raw table
     data = [[None, 'Good', 'Injured', 'Dead'],
             ['Cars', stacked[3, 1] + stacked[4, 1], stacked[3, 6] + stacked[4, 6], stacked[3, 8] + stacked[4, 8]],
             ['Motorcycles', stacked[1, 1] + stacked[2, 1], stacked[1, 6] + stacked[2, 6],
@@ -70,13 +91,13 @@ def create_table(c, df):
              stacked[3, 6] + stacked[4, 6] + stacked[1, 6] + stacked[2, 6],
              stacked[3, 8] + stacked[4, 8] + stacked[1, 8] + stacked[2, 8]]]
 
-    # print table to output
-    print(f"{' ' * 12}|{data[0][1]:10}|{data[0][2]:10}|{data[0][1]:10}")
-    print(("-" * 12) + "+" + ("-" * 10) + "+" + ("-" * 10) + "+" + ("-" * 10))
-    print(f"{data[1][0]:12}|{data[1][1]:10}|{data[1][2]:10}|{data[1][1]:10}")
-    print(f"{data[2][0]:12}|{data[2][1]:10}|{data[2][2]:10}|{data[2][1]:10}")
-    print(f"{data[3][0]:12}|{data[3][1]:10}|{data[3][2]:10}|{data[3][1]:10}")
+    # print table to output - elements separated by tab
+    for row in data:
+        for col in row:
+            print(f"{col}\t", end="")
+        print()
 
+    # format the table
     t = Table(data, style=[('FONTNAME', (0, 0), (-1, -1), 'Helvetica'), ('FONTSIZE', (0, 0), (-1, -1), 12),
                            ('LEADING', (0, 0), (-1, -1), 12),
                            ('TEXTCOLOR', (0, 1), (0, -2), "#ffffff"),
@@ -94,10 +115,17 @@ def create_table(c, df):
 
 
 def get_additional_data(df):
+    """
+    Get additional data that will be used in report,
+    namely total number accidents, number of car accidents and motorcycle accidents.
+
+    :param df: DataFrame containing accidents
+    :return: additional data in a dictionary
+    """
     res = {"total_accidents": len(df)}
 
     # Get new DataFrame with only columns I need
-    df_new = df[["p1", "date", "p44", "p57"]]
+    df_new = df[["p1", "p44", "p57"]]
 
     # only keep rows, where p44 (type of vehicle) is car or motorcycle (== 1/2/3/4)
     df_new = df_new[df_new["p44"].isin([1, 2, 3, 4])]
@@ -119,6 +147,13 @@ def get_additional_data(df):
 
 
 def create_report(df):
+    """
+    Create pdf report about vehicle type influence on driver injuries.
+
+    :param df: DataFrame containing accidents
+    :return: nothing
+    """
+
     # prepare styles
     styles = getSampleStyleSheet()
     style_normal = styles['Normal']
@@ -148,7 +183,7 @@ def create_report(df):
     c.drawString(3 * cm, 25 * cm, 'Influence of vehicle type on driver status')
 
     # Text
-    c.setFillColor('#f0f0f0')
+    c.setFillColor('#f0f0f0')  # color that blends well with graph
     c.rect(2 * cm, 18 * cm, 17 * cm, 5 * cm, stroke=0, fill=1)
     additional_data = get_additional_data(df)
     story = [Paragraph(
@@ -175,6 +210,7 @@ def create_report(df):
     c.setFillColor('#f0f0f0')
     c.rect(13 * cm, 7 * cm, 6 * cm, 10 * cm, stroke=0, fill=1)
 
+    # graph text
     story = [Paragraph(
         "The graph shows <b>driver status</b> after an accident - either the driver was <b>OK</b>, <b>injured</b>, " +
         "or <b>dead</b>.\nThe data are normalized because the number of car accidents is much higher.\n" +
@@ -190,7 +226,7 @@ def create_report(df):
     create_table(c, df)
 
     c.showPage()
-    c.save()
+    c.save()  # save the report
 
 
 if __name__ == "__main__":
@@ -199,6 +235,5 @@ if __name__ == "__main__":
     else:  # data file does not exist
         raise FileNotFoundError("File accidents.pkl.gz containing data not found.")
 
-    # create date column in DataFrame
-    dataframe["date"] = pd.to_datetime(dataframe["p2a"], format="%Y-%m-%d", errors="coerce")
+    # create the report doc.pdf
     create_report(dataframe)
