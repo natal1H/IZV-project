@@ -97,7 +97,7 @@ def plot_cluster(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_fig
     gdf5 = gdf4.merge(gdf_coords, left_on="cluster", right_index=True).set_geometry("geometry_y")
 
     # plot clusters
-    gdf5.plot(ax=ax, markersize=gdf5["cnt"], column="cnt", legend=True, alpha=0.6)
+    gdf5.plot(ax=ax, markersize=gdf5["cnt"] / 5, column="cnt", legend=True, alpha=0.6)
     ctx.add_basemap(ax, crs="epsg:3857", source=ctx.providers.Stamen.TonerLite, alpha=0.9)
 
     plt.axis("off")
@@ -112,4 +112,3 @@ def plot_cluster(gdf: geopandas.GeoDataFrame, fig_location: str = None, show_fig
 
 if __name__ == "__main__":
     pass
-
